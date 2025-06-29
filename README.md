@@ -45,14 +45,16 @@ git clone https://github.com/alfille/logger
   * *json (included in standard)*
   * *sys (included in standard)*
   * *os (included in standard)*
+  * *datetime (included in standard)*
   * *socket (included in standard)*
   * *struct (included in standard)*
   * *re (included in standard)*
   * owpy3 (included in logger repository)
 * Cloud (logger.py)
   * *http.server (included in standard)*
+  * *urllib.parse (included in standard)*
   * *json (included in standard)*
-  * *time (included in standard)*
+  * *datetime (included in standard)*
   * *io (included in standard)*
   * *sqlite3 (included in standard)*
 

@@ -9,6 +9,7 @@
 
 from requests import put as send_put
 import json
+import datetime
 import owpy3
 
 #url = "https://alfille.online/logger"
@@ -16,14 +17,14 @@ url = "http://localhost:8001"
 
 def upload( data_string ):
     j = json.dumps( {'data': data_string } )
-    response = send_put(
-        url,
-        json= j ,
-        headers = { "Content-Type": "application/text"}
-        )
-    print(response,j) ;
-
-
+    try:
+        response = send_put(
+            url,
+            data = j ,
+            headers = { "Content-Type": "application/text"}
+            )
+    except:
+        print( datetime.datetime.now(), data_string ) 
 
 
 upload("this is a test 1")
