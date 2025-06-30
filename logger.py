@@ -231,34 +231,34 @@ def main(sysargs):
         )
 
     # Server address
-    address = "localhost"    
-    parser.add_argument('-a','--address',
+    default_port = 8001
+    server = f"localhost:{default_port}"
+    parser.add_argument('-s','--server',
         required=False,
-        metavar="IP_ADDRESS",
-        default=address,
-        dest="address",
+        metavar="SERVER",
+        default=server,
+        dest="server",
         nargs='?',
-        help=f'Server IP address (optional) default={address}'
+        help=f'Server IP address and port (optional) default={server}'
         )
-
-    # Server port    
-    port = 8001
-    parser.add_argument('-p','--port',
-        metavar="PORT",
-        required=False,
-        default=port,
-        dest="port",
-        type=int,
-        nargs='?',
-        help=f'Server port (optional) default={port}'
-        )    
         
     args=parser.parse_args()
     print(sysargs,args)
 
-    
-    webServer = HTTPServer((args.address, args.port), MyServer)
-    print("Server started http://%s:%s" % (args.address, args.port))
+    # Handle server address
+    if args.server.find('//')==-1:
+        server = '//'.join(['https:',args.server])
+    else:
+        server = args.server
+    print("server",server)
+    u = urllib.parse.urlparse(server)
+    print(u)
+    port = u.port
+    if port==None:
+        port = default_port
+        
+    webServer = HTTPServer((u.hostname, port), MyServer)
+    print("Server started http://%s:%s" % (u.hostname, port))
 
     global tokens
     if "tokens" in args:

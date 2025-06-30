@@ -50,6 +50,7 @@ git clone https://github.com/alfille/logger
   * *socket (included in standard)*
   * *struct (included in standard)*
   * *sys (included in standard)*
+  * *time (included in standard)*
   * owpy3 (included in logger repository)
 * Cloud (logger.py)
   * *argparse (included in standard)*
