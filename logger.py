@@ -23,38 +23,51 @@ import sqlite3
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from io import BytesIO
+import sys
 import datetime
+import argparse
 import urllib
 from urllib.parse import urlparse
 import json
 
-hostName = "localhost"
-serverPort = 8001
-
 class MyServer(BaseHTTPRequestHandler):
     def do_GET(self):
-        print("GET GET GET")
         # Respond to web request
         self.send_response(200)
         self.send_header("Content-type", "text/html")
         self.end_headers()
 
-        # parse url for date if present
-        print("parsing")
-        try:
-            d = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
-        except:
-            d = ({})
-        print(urllib.parse.urlparse(self.path))
-        print(urllib.parse.urlparse(self.path).query)
-        print(d)
+        # test URL
+        if len(self.path) > 1:
+            if self.path[1] != '?':
+                return
 
-        if "date" in d:
-            date = d["date"][0]
-            print("found", date )
+        # parse url
+        try:
+            u = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        except:
+            u = ({})
+
+        # test for tokens (if specified)
+        global tokens
+        if tokens != None:
+            # token list specified
+            if "token" not in u:
+                # token not sent
+                return
+            if u["token"][0] not in tokens:
+                # token doesn't match
+                return
+
+        # parse url for date if present
+        if "date" in u:
+            # Date found
+            date = u["date"][0]
+            #print("found", date )
         else:
+            # Else use today
             date = datetime.date.today().isoformat()
-            print("not found", date )
+            #print("not found", date )
 
         # Get corresponding database entries for this date
         global db
@@ -62,7 +75,8 @@ class MyServer(BaseHTTPRequestHandler):
             [ "<tr>"+"".join(["<td>"+c+"</td>" for c in row])+"</tr>"
                 for row in db.day_data( datetime.datetime.fromisoformat(date) ) ]
             )
-        print("table_data",table_data)
+        if len(table_data)==0:
+            table_data = "<tr><td colspan=2>&nbsp;&nbsp;No entries&nbsp;&nbsp;</td></tr>"
 
         # Generate HTML
         html = f"""
@@ -81,17 +95,20 @@ class MyServer(BaseHTTPRequestHandler):
             <body onload=SetDate('{date}')>
                 <div class='top'>
                     <input type='date' id='date_pick' oninput='NewDate()'>&nbsp;&nbsp;{date}
-                    <br>
+                    <hr>
                 </div>
                 <div class='scroll'>
                     <table>
                         <tr><th>Time</th><th>Data</th></tr>
                         {table_data}
                     </table>
+                    <hr>
+                    <a href="https://github.com/alfille/logger">Logger by Paul H Alfille 2025</a>
                 </div>
             </body>
             <script>
                 function SetDate(date) {{
+                    //console.log("SetDate",date)
                     let d
                     try {{
                         d = new Date(date)
@@ -106,6 +123,7 @@ class MyServer(BaseHTTPRequestHandler):
                 }}
                 function NewDate() {{
                     const newdate = document.getElementById('date_pick').value
+                    //console.log("NewDate",newdate)
                     const url = new URL(location.href);
                     url.searchParams.set('date', newdate);
 
@@ -150,20 +168,20 @@ class database:
 
     def add( self, value ):
         # Add a record
-        print( f"Adding _{value}" )
+        #print( f"Adding _{value}" )
         self.command( """INSERT INTO datalog( value ) VALUES (?) """, ( value, ) )
 
     def day_data( self, day ):
         # Get records from a full day
         nextday = day + datetime.timedelta(days=1)
         records = self.command( """SELECT time(date),value FROM datalog WHERE date BETWEEN date(?) AND date(?) ORDER BY date""", (day.isoformat(),nextday.isoformat()), True )
-        print(records)
+        #print(records)
         return records
 
     def command( self, cmd, value_tuple=None, fetch=False ):
         # Connect to database and handle command
-        print(cmd)
-        print(value_tuple)
+        #print(cmd)
+        #print(value_tuple)
         try:
             with sqlite3.connect(self.database) as conn:
                 cursor = conn.cursor()
@@ -181,13 +199,75 @@ class database:
             raise e
         return records
 
-if __name__ == "__main__":        
-    webServer = HTTPServer((hostName, serverPort), MyServer)
-    print("Server started http://%s:%s" % (hostName, serverPort))
+def main(sysargs):
+    dbfile = "./logger_data.db"
+    # Command line first
+    parser = argparse.ArgumentParser(
+        prog="1-wire Logger",
+        description="Log 1-wire data externally to protect interior environment\nLogger and webserver component",
+        epilog="Repository: https://github.com/alfille/logger")
+
+    # Database file
+    dbfile = "logger_data.db"
+    parser.add_argument('-d','--dbfile',
+        metavar="DB_FILE",
+        required=False,
+        default=dbfile,
+        dest="dbfile",
+        type=str,
+        nargs='?',
+        help=f'database file location (optional) default={dbfile}'
+        )
+
+    # token list
+    parser.add_argument('-t','--tokens',
+        metavar="TOKEN",
+        required=False,
+        default=argparse.SUPPRESS,
+        dest="tokens",
+        type=str,
+        nargs='*',
+        help='Token list to accept from putter.py (optonal)'
+        )
+
+    # Server address
+    address = "localhost"    
+    parser.add_argument('-a','--address',
+        required=False,
+        metavar="IP_ADDRESS",
+        default=address,
+        dest="address",
+        nargs='?',
+        help=f'Server IP address (optional) default={address}'
+        )
+
+    # Server port    
+    port = 8001
+    parser.add_argument('-p','--port',
+        metavar="PORT",
+        required=False,
+        default=port,
+        dest="port",
+        type=int,
+        nargs='?',
+        help=f'Server port (optional) default={port}'
+        )    
+        
+    args=parser.parse_args()
+    print(sysargs,args)
+
+    
+    webServer = HTTPServer((args.address, args.port), MyServer)
+    print("Server started http://%s:%s" % (args.address, args.port))
+
+    global tokens
+    if "tokens" in args:
+        tokens = args.tokens
+    else:
+        tokens = None
 
     global db
-    db = database()
-    db.day_data( datetime.date.today() )
+    db = database(args.dbfile)
 
     try:
         webServer.serve_forever()
@@ -196,3 +276,7 @@ if __name__ == "__main__":
 
     webServer.server_close()
  
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
+else:
+    print("Standalone program")

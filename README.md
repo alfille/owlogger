@@ -42,21 +42,24 @@ git clone https://github.com/alfille/logger
 
 * Local (putter.py)
   * requests
-  * *json (included in standard)*
-  * *sys (included in standard)*
-  * *os (included in standard)*
+  * *argparse (included in standard)*
   * *datetime (included in standard)*
+  * *json (included in standard)*
+  * *os (included in standard)*
+  * *re (included in standard)*
   * *socket (included in standard)*
   * *struct (included in standard)*
-  * *re (included in standard)*
+  * *sys (included in standard)*
   * owpy3 (included in logger repository)
 * Cloud (logger.py)
-  * *http.server (included in standard)*
-  * *urllib.parse (included in standard)*
-  * *json (included in standard)*
+  * *argparse (included in standard)*
   * *datetime (included in standard)*
+  * *http.server (included in standard)*
+  * *json (included in standard)*
   * *io (included in standard)*
   * *sqlite3 (included in standard)*
+  * *sys (included in standard)*
+  * *urllib.parse (included in standard)*
 
 ## About Logger
 
