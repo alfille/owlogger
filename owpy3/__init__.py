@@ -42,9 +42,12 @@ __version__ = '0.4'
 # exceptions used and thrown by the ownet classes
 #
 
+Dstate = False
+
 def Debug( state=False ):
     global Dstate
     Dstate = state
+    print("Debug set",Dstate)
 
 def Dprint( text ):
     global Dstate
