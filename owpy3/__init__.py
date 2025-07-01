@@ -332,13 +332,13 @@ class Sensor(object):
         """
         Dprint( 'Sensor.entries()')
         list = self._connection.dir(self._usePath)
-        if self._path == '/':
+        if self._path == b'/':
             for entry in list:
-                if not '/' in entry:
+                if not b'/' in entry:
                     yield entry
         else:
             for entry in list:
-                yield entry.split('/')[-1]
+                yield entry.split(b'/')[-1]
 
 
     def entryList(self):
