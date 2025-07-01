@@ -392,13 +392,13 @@ class Sensor(object):
 
         else:
             list = self._connection.dir(self._usePath)
-            if self._path == '/':
+            if self._path == b'/':
                 for entry in list:
-                    if '/' in entry:
+                    if b'/' in entry:
                         yield Sensor(entry, connection=self._connection)
                 
 
-    def sensorList(self, names = ['main', 'aux']):
+    def sensorList(self, names = [b'main', b'aux']):
         """
         List of all the sensors that are associated with the current
         sensor.
