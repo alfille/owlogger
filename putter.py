@@ -11,13 +11,11 @@ from requests import put as send_put
 import json
 import datetime
 import argparse
+import sys
 import owpy3
 
-#url = "https://alfille.online/logger"
-url = "http://localhost:8001"
 
-def upload( data_string ):
-    global token
+def upload( server, token, data_string ):
     if token==None:
         j = json.dumps( {'data': data_string } )
     else:
@@ -25,7 +23,7 @@ def upload( data_string ):
 
     try:
         response = send_put(
-            url,
+            server,
             data = j ,
             headers = { "Content-Type": "application/text"}
             )
@@ -75,9 +73,9 @@ def main(sysargs):
         )
         
     # periodic
-    parser.add_argument('-o','--owserver',
+    parser.add_argument('-p','--period',
         required=False,
-        metavar="OWSERVER",
+        metavar="PERIOD",
         default=argparse.SUPPRESS,
         dest="period",
         nargs='?',
@@ -88,35 +86,51 @@ def main(sysargs):
     args=parser.parse_args()
     print(sysargs,args)
 
-    global token
+    #tokan
     if "token" in args:
         token = args.tokens
     else:
         token = None
 
-    global server
-    server = args.server_activate
+    #server
+    server = args.server
 
+    #owserver
     if args.owserver.find("//")==-1:
-        owserver = args.owserver.split("//")[1]
-    else:
         owserver = args.owserver
+    else:
+        owserver = args.owserver.split("//")[1]
     if owserver.find(":")==-1:
         owserver_port = default_owport
     else:
         (owserver, owserver_port) = owserver.split(":")
 
-    global period
+    #period
     if "period" in args:
         period = args.period
         if period == NaN:
             period = 30
     else:
         period = None
- 
-    while True:
-        
 
+    # Loop
+    while True:
+        # owserver_connect( owserver, owserver_port )
+        # Tdevices = devs_with_temerature()
+        # Hdevices = devs_with_humidity()
+        data_string = " ".join([
+            " ".join(["T "+Temperature_read(d) for d in Tdevices]),
+            " ".join(["H "+Humidity_read(d) for d in Hdevices])
+        ])
+        upload( server, token, owserver_data )
+
+        if period==Null:
+            # single shot
+            break
+
+        # delay and repeat
+        time.sleep( 60*period )
+        
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
