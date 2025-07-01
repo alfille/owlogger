@@ -42,9 +42,14 @@ __version__ = '0.4'
 # exceptions used and thrown by the ownet classes
 #
 
+def Debug( state=False ):
+    global Dstate
+    Dstate = state
+
 def Dprint( text ):
-    print( text )
-    pass
+    global Dstate
+    if Dstate:
+        print( text )
 
 class exError(Exception):
     """base exception for all one wire raised exceptions."""
@@ -137,7 +142,10 @@ class Sensor(object):
         Create a new Sensor as it exists at the specified path.
         """
         # 1-wire strings are all bytes
-        path = ow_path.encode('utf-8')
+        if isinstance(owpath, (bytes, bytearray)):
+            path=ow_path
+        else:
+            path = ow_path.encode('utf-8')
 
         Dprint( f"Sensor.__init__({path}, server=\"{str(server)}\", port={str(port)})" )
 
