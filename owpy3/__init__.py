@@ -142,7 +142,7 @@ class Sensor(object):
         Create a new Sensor as it exists at the specified path.
         """
         # 1-wire strings are all bytes
-        if isinstance(owpath, (bytes, bytearray)):
+        if isinstance(ow_path, (bytes, bytearray)):
             path=ow_path
         else:
             path = ow_path.encode('utf-8')
