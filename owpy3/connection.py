@@ -160,11 +160,11 @@ class Connection(object):
         return rtn
 
 
-    def byteify( self, s ) {
+    def byteify( self, s ):
         if isinstance(s, (bytes, bytearray)):
             return s
         else:
-            return = s.encode('utf-8')
+            return s.encode('utf-8')
 
     def write(self, path, value):
         """
