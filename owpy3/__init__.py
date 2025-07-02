@@ -254,7 +254,7 @@ class Sensor(object):
         Dprint( 'Sensor.__hash__')
         return hash(self._path)
 
-
+'''
     def __getattr__(self, name):
         """
         Retreive an attribute from the sensor. __getattr__ is called
@@ -279,7 +279,7 @@ class Sensor(object):
             raise AttributeError(name)
 
         return attr
-
+'''
 
     def __setattr__(self, name, value):
         """
