@@ -141,7 +141,7 @@ class Sensor(object):
     a individual 1-wire element as it exists on the network.
     """
 
-    def __init__(self, ow_path, server = None, port = None, connection=None):
+    def __init__(self, ow_path : (str,bytes), server = None, port = None, connection=None):
         """
         Create a new Sensor as it exists at the specified path.
         """
@@ -280,7 +280,7 @@ class Sensor(object):
 
         return attr
     '''
-    '''
+
     def __setattr__(self, name, value):
         """
         Set the value of a sensor attribute. This is accomplished by
@@ -312,7 +312,7 @@ class Sensor(object):
                 self.__dict__[n] = v
         else:
             self.__dict__[n] = v
-    '''
+
 
     def useCache(self, use_cache):
         """
