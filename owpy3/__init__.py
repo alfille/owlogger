@@ -136,10 +136,10 @@ class Sensor(object):
         """
         Create a new Sensor as it exists at the specified path.
         """
+        Dprint( f"Sensor.__init__({path}, server=\"{str(server)}\", port={str(port)})" )
+
         # 1-wire strings are all bytes
         path = owpath.encode('utf-8')
-
-        Dprint( f"Sensor.__init__({path}, server=\"{str(server)}\", port={str(port)})" )
 
         # setup the connection to use for connunication with the owsensor server
         if connection:
