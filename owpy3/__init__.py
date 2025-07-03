@@ -51,7 +51,6 @@ def Debug( state=False ):
 
 def Dprint( text ):
     global Dstate
-    print("Dstate",Dstate)
     if Dstate:
         print( text )
 
