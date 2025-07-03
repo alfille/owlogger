@@ -161,10 +161,10 @@ class Connection(object):
 
 
     def byteify( self, s ):
-        if isinstance(s, str):
-            return s.encode('utf-8')
-        else:
+        if isinstance(s, (bytes, bytearray)):
             return s
+        else:
+            return s.encode('utf-8')
 
     def write(self, path, value):
         """
