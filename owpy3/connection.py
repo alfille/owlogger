@@ -164,7 +164,7 @@ class Connection(object):
         value = str(value)
         smsg = self.pack(OWMsg.write, len(path) + 1 + len(value) + 1, len(value) + 1)
         s.sendall(smsg)
-        s.sendall((path + '\x00' + value + '\x00').encode('utf-8'))
+        s.sendall(path + '\x00' + value + '\x00')
 
         data = s.recv(24)
 
@@ -187,7 +187,7 @@ class Connection(object):
 
         smsg = self.pack(OWMsg.dir, len(path) + 1, 0)
         s.sendall(smsg)
-        s.sendall((path + '\x00').encode('utf-8'))
+        s.sendall(path + '\x00')
 
         fields = []
         while 1:
