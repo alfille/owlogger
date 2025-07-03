@@ -47,8 +47,7 @@ Dstate = False
 def Debug( state=False ):
     global Dstate
     Dstate = state
-    # propagate
-    Connection.Debug(state)
+    print("Debug set",Dstate)
 
 def Dprint( text ):
     global Dstate

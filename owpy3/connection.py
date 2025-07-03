@@ -36,17 +36,10 @@ __author__ = 'Peter Kropf'
 __email__ = 'pkropf@gmail.com'
 __version__ = '1.9'
 
-Dstate = False
-
-def Debug( state=False ):
-    global Dstate
-    Dstate = state
 
 def Dprint( text ):
-    global Dstate
-    if Dstate:
-        print( text )
-
+    print( text )
+    pass
 
 class exError(Exception):
     """base exception for all one wire raised exceptions."""
