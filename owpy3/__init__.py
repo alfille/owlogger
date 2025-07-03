@@ -137,7 +137,7 @@ class Sensor(object):
         Create a new Sensor as it exists at the specified path.
         """
         # 1-wire strings are all bytes
-        path = ow_path.encode('utf-8')
+        path = owpath.encode('utf-8')
 
         Dprint( f"Sensor.__init__({path}, server=\"{str(server)}\", port={str(port)})" )
 
