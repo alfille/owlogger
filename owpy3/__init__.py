@@ -188,11 +188,11 @@ class Sensor(object):
 
         self.useCache(self._useCache)
 
-    def byteify( self, s ):
+    def byteify( self, s ) {
         if isinstance(s, (bytes, bytearray)):
             return s
         else:
-            return s.encode('utf-8')
+            return = s.encode('utf-8')
 
     def __str__(self):
         """
