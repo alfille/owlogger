@@ -273,7 +273,7 @@ class Sensor(object):
         """
 
         try:
-            print( f"Sensor.__getattr__({name})" )
+            Dprint( f"Sensor.__getattr__({name})" )
             attr = self._connection.read(object.__getattribute__(self, '_attrs')[self.byteify(name)])
         except:
             raise AttributeError(name)
@@ -297,7 +297,7 @@ class Sensor(object):
         will set the value of PIO.1 to 1.
         """
 
-        print( f"Sensor.__setattr__({name}, {value})" )
+        Dprint( f"Sensor.__setattr__({name}, {value})" )
 
         # Life can get tricky when using __setattr__. Self doesn't
         # have an _attrs atribute when it's initially created. _attrs
