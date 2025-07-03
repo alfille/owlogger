@@ -31,7 +31,7 @@ UPDATED for python3 by PHA
 
 import sys
 import os
-from .connection import Connection,connection_debug
+from .connection import Connection
 
 __author__ = 'Peter Kropf'
 __email__ = 'pkropf@gmail.com'
@@ -48,10 +48,11 @@ def Debug( state=False ):
     global Dstate
     Dstate = state
     # propagate
-    connection_debug(state)
+    Connection.Debug(state)
 
 def Dprint( text ):
     global Dstate
+    print("Dstate",Dstate)
     if Dstate:
         print( text )
 
@@ -141,21 +142,17 @@ class Sensor(object):
     a individual 1-wire element as it exists on the network.
     """
 
-    def __init__(self, ow_path : (str,bytes), server = None, port = None, connection=None):
+    def __init__(self, ow_path, server = None, port = None, connection=None):
         """
         Create a new Sensor as it exists at the specified path.
         """
         # 1-wire strings are all bytes
-        path = self.byteify( ow_path )
+        if isinstance(ow_path, (bytes, bytearray)):
+            path=ow_path
+        else:
+            path = ow_path.encode('utf-8')
 
         Dprint( f"Sensor.__init__({path}, server=\"{str(server)}\", port={str(port)})" )
-
-        # Types
-        #  _path binary
-        #  _connection class object
-        #  _useCache bool
-        #  _connection._server string
-        #  _connection._port int
 
         # setup the connection to use for connunication with the owsensor server
         if connection:
@@ -188,11 +185,6 @@ class Sensor(object):
 
         self.useCache(self._useCache)
 
-    def byteify( self, s ) {
-        if isinstance(s, (bytes, bytearray)):
-            return s
-        else:
-            return = s.encode('utf-8')
 
     def __str__(self):
         """
@@ -274,7 +266,7 @@ class Sensor(object):
 
         try:
             Dprint( f"Sensor.__getattr__({name})" )
-            attr = self._connection.read(object.__getattribute__(self, '_attrs')[self.byteify(name)])
+            attr = self._connection.read(object.__getattribute__(self, '_attrs')[name])
         except:
             raise AttributeError(name)
 
@@ -303,15 +295,13 @@ class Sensor(object):
         # have an _attrs atribute when it's initially created. _attrs
         # is only there after it's been set in __init__. So we can
         # only reference it if it's already been added.
-        n = self.byteify(namr)
-        v = self.byteify(value)
         if hasattr(self, '_attrs'):
             if name in self._attrs:
-                self._connection.write(self._attrs[n], v)
+                self._connection.write(self._attrs[name], value)
             else:
-                self.__dict__[n] = v
+                self.__dict__[name] = value
         else:
-            self.__dict__[n] = v
+            self.__dict__[name] = value
 
 
     def useCache(self, use_cache):
@@ -347,7 +337,7 @@ class Sensor(object):
         if self._path == b'/':
             self._type    = self._connection.read(b'/system/adapter/name.0')
         else:
-            self._type  = self._connection.read( self._usePath + b'/type' )
+            self._type  = self._connection.read( f"{self._usePath}/type".encode('utf-8') )
 
         self._attrs = dict([(n.replace(b'.', b'_'), self._usePath + b'/' + n) for n in self.entries()])
 
@@ -398,7 +388,7 @@ class Sensor(object):
         """
 
         Dprint( f"Sensor.sensors({str(names)})" )
-        if self._type == b'DS2409':
+        if self._type == 'DS2409':
             for branch in names:
                 path = self._usePath + b'/' + branch
                 list = [x for x in self._connection.dir(path) if b'/' in x]
@@ -408,7 +398,7 @@ class Sensor(object):
                     for branch_entry in namelist.split(b','):
                         Dprint( f"branch_entry({str(branch_entry)})" )
                         try:
-                            self._connection.read( branch_entry + b'/type' )
+                            self._connection.read(branch_entry + b'/type')
                         except exUnknownSensor as ex:
                             continue
                         yield Sensor(branch_entry, connection=self._connection)
@@ -469,7 +459,7 @@ class Sensor(object):
         """
         Dprint( 'Sensor.find', keywords)
         #recursion = keywords.pop('recursion', False)
-        all       = keywords.pop(b'all',       False)
+        all       = keywords.pop('all',       False)
 
         for sensor in self.sensors():
             match = 0

@@ -38,7 +38,7 @@ __version__ = '1.9'
 
 Dstate = False
 
-def connection_debug( state=False ):
+def Debug( state=False ):
     global Dstate
     Dstate = state
 
@@ -160,12 +160,6 @@ class Connection(object):
         return rtn
 
 
-    def byteify( self, s ) {
-        if isinstance(s, (bytes, bytearray)):
-            return s
-        else:
-            return = s.encode('utf-8')
-
     def write(self, path, value):
         """
         """
@@ -174,11 +168,10 @@ class Connection(object):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((self._server, self._port))
 
-        p = self.byteify( path )
-        v = self.byteify( value )
-        smsg = self.pack(OWMsg.write, len(p) + 1 + len(v) + 1, len(v) + 1)
+        value = str(value).encode('utf-8')
+        smsg = self.pack(OWMsg.write, len(path) + 1 + len(value) + 1, len(value) + 1)
         s.sendall(smsg)
-        s.sendall((p + b'\x00' + v + b'\x00'))
+        s.sendall((path + b'\x00' + value + b'\x00'))
 
         data = s.recv(24)
 
@@ -196,15 +189,12 @@ class Connection(object):
         """
 
         Dprint( f"Connection.dir(\"{path}\")" )
-
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((self._server, self._port))
 
-        p = self.byteify( path )
-
-        smsg = self.pack(OWMsg.dir, len(p) + 1, 0)
+        smsg = self.pack(OWMsg.dir, len(path) + 1, 0)
         s.sendall(smsg)
-        s.sendall((p + b'\x00'))
+        s.sendall((path + b'\x00'))
 
         fields = []
         while 1:
