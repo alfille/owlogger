@@ -39,6 +39,7 @@ def main(sysargs):
 
     # token list
     parser.add_argument('-t','--token',
+        metavar="TOKEN",
         required=False,
         default=argparse.SUPPRESS,
         dest="token",
@@ -52,6 +53,7 @@ def main(sysargs):
     server = f"localhost:{default_port}"
     parser.add_argument('-s','--server',
         required=False,
+        metavar="SERVER",
         default=server,
         dest="server",
         nargs='?',
@@ -63,6 +65,7 @@ def main(sysargs):
     owserver = f"localhost:{default_owport}"
     parser.add_argument('-o','--owserver',
         required=False,
+        metavar="OWSERVER",
         default=owserver,
         dest="owserver",
         nargs='?',
@@ -72,19 +75,11 @@ def main(sysargs):
     # periodic
     parser.add_argument('-p','--period',
         required=False,
+        metavar="PERIOD",
         default=argparse.SUPPRESS,
         dest="period",
         nargs='?',
         help=f'Period (minutes) to repeat reading and sending (single-shot if not present)'
-        )
-
-    # debug
-    parser.add_argument('-d', '--debug',
-        required=False,
-        dest="debug",
-        action='store_true',
-        default=False,
-        help="Turn on detailed ownet reporting to console"
         )
         
         
@@ -110,17 +105,13 @@ def main(sysargs):
     else:
         (owserver, owserver_port) = owserver.split(":")
 
-    # period
+    #period
     if "period" in args:
         period = args.period
         if period == NaN:
             period = 30
     else:
         period = None
-
-    # debug
-    print("debug",args.debug)
-    owpy3.Debug( args.debug)
 
     # Loop
     while True:
