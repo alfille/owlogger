@@ -321,10 +321,10 @@ class Sensor(object):
             else:
                 self._usePath = b'/uncached' + self._path
 
-        if self._path == b'/':
-            self._type    = self._connection.read(b'/system/adapter/name.0')
+        if self._path == '/':
+            self._type    = self._connection.read('/system/adapter/name.0')
         else:
-            self._type  = self._connection.read( f"{self._usePath}/type".encode('utf-8') )
+            self._type  = self._connection.read( f"{self._usePath}/type" )
 
         self._attrs = dict([(n.replace(b'.', b'_'), self._usePath + b'/' + n) for n in self.entries()])
 
@@ -359,7 +359,7 @@ class Sensor(object):
         return [e for e in self.entries()]
 
 
-    def sensors(self, names = [b'main', b'aux']):
+    def sensors(self, names = ['main', 'aux']):
         """
         Generator which yields all the sensors that are associated
         with the current sensor.
@@ -377,15 +377,15 @@ class Sensor(object):
         Dprint( f"Sensor.sensors({str(names)})" )
         if self._type == 'DS2409':
             for branch in names:
-                path = self._usePath + b'/' + branch
-                list = [x for x in self._connection.dir(path) if b'/' in x]
+                path = self._usePath + '/' + branch
+                list = [x for x in self._connection.dir(path) if '/' in x]
                 if list:
-                    namelist = b','.join(list)
+                    namelist = ','.join(list)
                     Dprint( f"Sensor.sensors namelist({str(namelist)})" )
-                    for branch_entry in namelist.split(b','):
+                    for branch_entry in namelist.split(','):
                         Dprint( f"branch_entry({str(branch_entry)})" )
                         try:
-                            self._connection.read(branch_entry + b'/type')
+                            self._connection.read(branch_entry + '/type')
                         except exUnknownSensor as ex:
                             continue
                         yield Sensor(branch_entry, connection=self._connection)
