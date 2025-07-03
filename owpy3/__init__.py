@@ -132,14 +132,11 @@ class Sensor(object):
     a individual 1-wire element as it exists on the network.
     """
 
-    def __init__(self, ow_path, server = None, port = None, connection=None):
+    def __init__(self, path, server = None, port = None, connection=None):
         """
         Create a new Sensor as it exists at the specified path.
         """
         Dprint( f"Sensor.__init__({path}, server=\"{str(server)}\", port={str(port)})" )
-
-        # 1-wire strings are all bytes
-        path = owpath.encode('utf-8')
 
         # setup the connection to use for connunication with the owsensor server
         if connection:
@@ -156,15 +153,15 @@ class Sensor(object):
 
         self._attrs = {}
 
-        if path == b'/':
+        if path == '/':
             self._path    = path
             self._useCache = True
-        elif path == b'/uncached':
-            self._path    = b'/'
+        elif path == '/uncached':
+            self._path    = '/'
             self._useCache = False
         else:
-            if path[:len(b'/uncached')] == b'/uncached':
-                self._path     = path[len(b'/uncached'):]
+            if path[:len('/uncached')] == '/uncached':
+                self._path     = path[len('/uncached'):]
                 self._useCache = False
             else:
                 self._path     = path
