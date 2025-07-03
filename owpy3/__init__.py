@@ -313,17 +313,17 @@ class Sensor(object):
         if self._useCache:
             self._usePath = self._path
         else:
-            if self._path == b'/':
-                self._usePath = b'/uncached'
+            if self._path == '/':
+                self._usePath = '/uncached'
             else:
-                self._usePath = b'/uncached' + self._path
+                self._usePath = '/uncached' + self._path
 
         if self._path == '/':
             self._type    = self._connection.read('/system/adapter/name.0')
         else:
             self._type  = self._connection.read( f"{self._usePath}/type" )
 
-        self._attrs = dict([(n.replace(b'.', b'_'), self._usePath + b'/' + n) for n in self.entries()])
+        self._attrs = dict([(n.replace('.', '_'), self._usePath + '/' + n) for n in self.entries()])
 
 
     def entries(self):
