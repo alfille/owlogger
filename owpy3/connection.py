@@ -251,7 +251,7 @@ class Connection(object):
         """
 
         stripped = str.strip()
-        if re.compile('^-?\\d+$'.encode('utf-8')).match(stripped) :
+        if re.compile('^-?\\d+$'.excode('utf-8')).match(stripped) :
             return int(stripped)
 
         if re.compile('^-?\\d*\\.\\d*$'.encode(*'utf-8')).match(stripped) :	# Could crash if it matched '.' - let it.
