@@ -303,7 +303,7 @@ class Sensor(object):
         # have an _attrs atribute when it's initially created. _attrs
         # is only there after it's been set in __init__. So we can
         # only reference it if it's already been added.
-        n = self.byteify(name)
+        n = self.byteify(namr)
         v = self.byteify(value)
         if hasattr(self, '_attrs'):
             if name in self._attrs:
