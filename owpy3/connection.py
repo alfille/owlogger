@@ -130,7 +130,7 @@ class Connection(object):
 
         smsg = self.pack(OWMsg.read, len(path) + 1, 8192)
         s.sendall(smsg)
-        s.sendall((path + '\x00').encode('utf-8'))
+        s.sendall(path + '\x00')
 
         while 1:
             data = s.recv(24)
