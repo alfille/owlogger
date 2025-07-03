@@ -130,7 +130,7 @@ class Connection(object):
 
         smsg = self.pack(OWMsg.read, len(path) + 1, 8192)
         s.sendall(smsg)
-        s.sendall((path + b'\x00'))
+        s.sendall((path + '\x00').encode('utf-8'))
 
         while 1:
             data = s.recv(24)
@@ -161,10 +161,10 @@ class Connection(object):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((self._server, self._port))
 
-        value = str(value).encode('utf-8')
+        value = str(value)
         smsg = self.pack(OWMsg.write, len(path) + 1 + len(value) + 1, len(value) + 1)
         s.sendall(smsg)
-        s.sendall((path + b'\x00' + value + b'\x00'))
+        s.sendall((path + '\x00' + value + '\x00').encode('utf-8'))
 
         data = s.recv(24)
 
@@ -187,7 +187,7 @@ class Connection(object):
 
         smsg = self.pack(OWMsg.dir, len(path) + 1, 0)
         s.sendall(smsg)
-        s.sendall((path + b'\x00'))
+        s.sendall((path + '\x00').encode('utf-8'))
 
         fields = []
         while 1:
@@ -251,10 +251,10 @@ class Connection(object):
         """
 
         stripped = str.strip()
-        if re.compile(b'^-?\\d+$').match(stripped) :
+        if re.compile('^-?\\d+$'.encode('utf-8')).match(stripped) :
             return int(stripped)
 
-        if re.compile(b'^-?\\d*\\.\\d*$').match(stripped) :	# Could crash if it matched '.' - let it.
+        if re.compile('^-?\\d*\\.\\d*$'.encode('utf-8')).match(stripped) :	# Could crash if it matched '.' - let it.
             return float(stripped)
 
         return str
