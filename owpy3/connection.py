@@ -122,6 +122,7 @@ class Connection(object):
 
     def read(self, path):
         """
+        Reads (a number)
         """
 
         Dprint( f"Connection.read(\"{path}\")" )
@@ -129,8 +130,8 @@ class Connection(object):
         s.connect((self._server, self._port))
 
         smsg = self.pack(OWMsg.read, len(path) + 1, 8192)
-        s.sendall(smsg)
-        s.sendall(path + '\x00')
+        s.sendall(smsg.encode('utf-8'))
+        s.sendall(path.encode('utf-8') + b'\x00')
 
         while 1:
             data = s.recv(24)
@@ -142,7 +143,7 @@ class Connection(object):
 
             if payload_len >= 0:
                 data = s.recv(payload_len)
-                rtn = self.toNumber(data[:data_len])
+                rtn = self.toNumber(data[:data_len].decode('utf-8'))
                 break
             else:
                 # ping response
@@ -250,12 +251,11 @@ class Connection(object):
         """
         """
 
-        stripped = str.strip()
-        if re.compile('^-?\d+$').match(stripped) :
-            return int(stripped)
-
-        if re.compile('^-?\d*\.\d*$').match(stripped) :	# Could crash if it matched '.' - let it.
-            return float(stripped)
-
-        return str
+        try:
+			return int(stripped)
+		except ValueError:
+			try:
+				return float(stripped)
+			except ValueError:
+				return str
 

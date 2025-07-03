@@ -12,6 +12,8 @@ import json
 import datetime
 import argparse
 import sys
+import math
+import time
 import owpy3
 
 
@@ -34,12 +36,11 @@ def main(sysargs):
     # Command line first
     parser = argparse.ArgumentParser(
         prog="1-wire Logger",
-        description="Log 1-wire data externally to protect interior environment\nSensor and transmittter component",
-        epilog="Repository: https://github.com/alfille/logger")
+        description="Log 1-wire data externally to protect interior sensors. Transmittter component",
+        epilog="By Paul H Alfille 2025 -- repository: https://github.com/alfille/logger")
 
     # token list
     parser.add_argument('-t','--token',
-        metavar="TOKEN",
         required=False,
         default=argparse.SUPPRESS,
         dest="token",
@@ -53,7 +54,6 @@ def main(sysargs):
     server = f"localhost:{default_port}"
     parser.add_argument('-s','--server',
         required=False,
-        metavar="SERVER",
         default=server,
         dest="server",
         nargs='?',
@@ -65,7 +65,6 @@ def main(sysargs):
     owserver = f"localhost:{default_owport}"
     parser.add_argument('-o','--owserver',
         required=False,
-        metavar="OWSERVER",
         default=owserver,
         dest="owserver",
         nargs='?',
@@ -75,10 +74,10 @@ def main(sysargs):
     # periodic
     parser.add_argument('-p','--period',
         required=False,
-        metavar="PERIOD",
         default=argparse.SUPPRESS,
         dest="period",
         nargs='?',
+        type=int,
         help=f'Period (minutes) to repeat reading and sending (single-shot if not present)'
         )
         
@@ -86,9 +85,9 @@ def main(sysargs):
     args=parser.parse_args()
     print(sysargs,args)
 
-    #tokan
+    #token
     if "token" in args:
-        token = args.tokens
+        token = args.token
     else:
         token = None
 
@@ -108,7 +107,7 @@ def main(sysargs):
     #period
     if "period" in args:
         period = args.period
-        if period == NaN:
+        if math.isnan(period):
             period = 30
     else:
         period = None
