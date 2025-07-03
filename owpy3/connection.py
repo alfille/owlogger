@@ -75,7 +75,7 @@ class OWMsg:
     presence = 6
 
 
-class Connection(object):
+class Connection:
     """
     A Connection provides access to a owserver without the standard
     core ow libraries. Instead, it impliments the wire protocol for
@@ -164,8 +164,8 @@ class Connection(object):
 
         value = str(value)
         smsg = self.pack(OWMsg.write, len(path) + 1 + len(value) + 1, len(value) + 1)
-        s.sendall(smsg)
-        s.sendall(path + '\x00' + value + '\x00')
+        s.sendall(smsg.encode('utf-8'))
+        s.sendall(path.encode('utf-8') + b'\x00' + value.encode('utf-8') + b'\x00')
 
         data = s.recv(24)
 
@@ -187,8 +187,8 @@ class Connection(object):
         s.connect((self._server, self._port))
 
         smsg = self.pack(OWMsg.dir, len(path) + 1, 0)
-        s.sendall(smsg)
-        s.sendall(path + '\x00')
+        s.sendall(smsg.encode('utf-8'))
+        s.sendall(path.encode('utf-8') + b'\x00')
 
         fields = []
         while 1:
@@ -252,10 +252,9 @@ class Connection(object):
         """
 
         try:
-			return int(stripped)
-		except ValueError:
-			try:
-				return float(stripped)
-			except ValueError:
-				return str
-
+            return int(str)
+        except ValueError:
+            try:
+                return float(str)
+            except ValueError:
+                return str

@@ -14,10 +14,28 @@ __logger__ is a simple system for showing data collected by 1-wire sensors in a 
 
 ## Install
 
-### Debian (Ubuntu, etc)
+### Hardware
+Of course, 1-wire sensors and a 1-wire adapter (bus master) is needed
+
+Types of 1-wire adapters:
+
+* Serial
+* USB
+* Direct wired
+* i2c
+* networked
+
+With some configuration, all are supported
+
+### Software
+#### Debian (Ubuntu, etc)
 * Local
 ```
+# essential packages
 sudo apt install git owserver python3 python3-requests
+# Optional for quick test
+sudo apt install ow-shell
+# Get these programs
 git clone https://github.com/alfille/logger
 ```
 * Cloud
@@ -45,8 +63,8 @@ git clone https://github.com/alfille/logger
   * *argparse (included in standard)*
   * *datetime (included in standard)*
   * *json (included in standard)*
+  * *math (included in standard)*
   * *os (included in standard)*
-  * *re (included in standard)*
   * *socket (included in standard)*
   * *struct (included in standard)*
   * *sys (included in standard)*
@@ -61,6 +79,21 @@ git clone https://github.com/alfille/logger
   * *sqlite3 (included in standard)*
   * *sys (included in standard)*
   * *urllib.parse (included in standard)*
+
+## Configuration
+
+### owserver
+
+Configured in `/etc/owfs.conf`
+
+* Native USB (the DS2490)
+uncomment `usb=all`
+
+* Serial (sometimes with USB to serial internal convertor)
+  * add -d /dev/tty.....
+  * for traditional serial example: `-d /dev/ttyS0`
+  * for USB-serial type: `-d /dev/ttyUSB0`  (may not be stable over reboot)
+  *   or  `-d /dev/serial/by-id/usb-1a86_USB2.0-Serial-if00-port0`  -- find name with `ls /dev/serial/by-id` before and fter plugging in dongle
 
 ## About Logger
 
