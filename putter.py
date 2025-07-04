@@ -29,6 +29,9 @@ def upload( server, token, data_string ):
             data = j ,
             headers = { "Content-Type": "application/text"}
             )
+        global debug
+        if debug:
+            print( f"Return code={response.status_code} ({response.reason}) from {response.url}")
     except:
         print( datetime.datetime.now(), data_string ) 
 
@@ -46,7 +49,7 @@ def main(sysargs):
         dest="token",
         type=str,
         nargs='*',
-        help='Token to senfd with data (optonal arbitrary text string)'
+        help='Token to send with data (optonal arbitrary text string)'
         )
 
     # Server address
@@ -121,6 +124,14 @@ def main(sysargs):
 
     #server
     server = args.server
+
+    # debug
+    global debug
+    debug = args.debug
+    if debug:
+        print("Debugging on")
+
+
 
     #owserver
     if args.owserver.find("//")==-1:

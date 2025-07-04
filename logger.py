@@ -31,6 +31,7 @@ from urllib.parse import urlparse
 import json
 
 class MyServer(BaseHTTPRequestHandler):
+    debug = False # class variable
     def do_GET(self):
         # Respond to web request
         self.send_response(200)
@@ -47,6 +48,9 @@ class MyServer(BaseHTTPRequestHandler):
             u = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
         except:
             u = ({})
+
+        if self.debug:
+            print("GET ",u)
 
         # test for tokens (if specified)
         global tokens
@@ -148,6 +152,8 @@ class MyServer(BaseHTTPRequestHandler):
 #        response.write(body_str)
 #        self.wfile.write(response.getvalue())
 #        print(body['data'])
+        if self.debug:
+            print("POST ",body)
         global db
         db.add( body['data'])
 
@@ -209,8 +215,7 @@ def main(sysargs):
 
     # Database file
     dbfile = "logger_data.db"
-    parser.add_argument('-d','--dbfile',
-        metavar="DB_FILE",
+    parser.add_argument('-f','--file',
         required=False,
         default=dbfile,
         dest="dbfile",
@@ -221,7 +226,6 @@ def main(sysargs):
 
     # token list
     parser.add_argument('-t','--tokens',
-        metavar="TOKEN",
         required=False,
         default=argparse.SUPPRESS,
         dest="tokens",
@@ -235,19 +239,31 @@ def main(sysargs):
     server = f"localhost:{default_port}"
     parser.add_argument('-s','--server',
         required=False,
-        metavar="SERVER",
         default=server,
         dest="server",
         nargs='?',
         help=f'Server IP address and port (optional) default={server}'
         )
         
+    # debug
+    parser.add_argument( "-d", "--debug",
+        required = False,
+        default = False,
+        dest="debug",
+        action="store_true",
+        help="Turn on some debugging output"
+        )
+        
     args=parser.parse_args()
     print(sysargs,args)
+    
+    if args.debug:
+        print("Debugging output on")
+        MyServer.debug = True
 
     # Handle server address
     if args.server.find('//')==-1:
-        server = '//'.join(['https:',args.server])
+        server = '//'.join(['http:',args.server])
     else:
         server = args.server
     print("server",server)
