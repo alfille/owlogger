@@ -161,10 +161,10 @@ def main(sysargs):
         # Get Temperatures
         no_data = True
         temperatures = []
-        for sensor in proxy.dir(slash=False, bus=False):
-            #stype = proxy.read(sensor + '/type').decode()
+        for sensor in owproxy.dir(slash=False, bus=False):
+            #stype = owproxy.read(sensor + '/type').decode()
             try:
-                temp = float(proxy.read(sensor + '/temperature'))
+                temp = float(owproxy.read(sensor + '/temperature'))
                 temperatures.append( temp )
             except protocol.OwnetError:
                 pass
