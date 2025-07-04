@@ -179,7 +179,7 @@ def main(sysargs):
         else:
             upload( server, token, " ".join([temperature_string]) )
 
-        if period==Null:
+        if period==None:
             # single shot
             break
 
