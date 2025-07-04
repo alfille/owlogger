@@ -14,7 +14,7 @@ import argparse
 import sys
 import math
 import time
-import owpy3
+from pyownet import protocol
 
 
 def upload( server, token, data_string ):
@@ -71,6 +71,26 @@ def main(sysargs):
         help=f'owserver network address (optional) default={owserver}'
         )
         
+    # Celsius
+    parser.add_argument( "-C", "--Celsius",
+        required=False,
+        default=protocol.FLG_TEMP_F,
+        const=protocol.FLG_TEMP_C,
+        dest="temp_scale",
+        action = "store_const",
+        help="Use Celsius temperature scale for readings. Default: Fahrenheit"
+        )
+
+    # Fahrenheit
+    parser.add_argument( "-F", "--Fahrenheit",
+        required=False,
+        default=protocol.FLG_TEMP_F,
+        const=protocol.FLG_TEMP_F,
+        dest="temp_scale",
+        action = "store_const",
+        help="Use Fahrenheit temperature scale for readings. Default: Fahrenheit"
+        )
+
     # periodic
     parser.add_argument('-p','--period',
         required=False,
@@ -79,6 +99,14 @@ def main(sysargs):
         nargs='?',
         type=int,
         help=f'Period (minutes) to repeat reading and sending (single-shot if not present)'
+        )
+        
+    # debug output
+    parser.add_argument('-d', '--debug', 
+        required=False,
+        action='store_true',
+        dest="debug",
+        help='debug output'
         )
         
         
@@ -100,9 +128,25 @@ def main(sysargs):
     else:
         owserver = args.owserver.split("//")[1]
     if owserver.find(":")==-1:
+        owserver_host = owserver
         owserver_port = default_owport
     else:
-        (owserver, owserver_port) = owserver.split(":")
+        (owserver_host, owserver_port) = owserver.split(":")
+
+    #
+    # create owserver proxy object
+    #
+    try:
+        owproxy = protocol.proxy(
+            owserver_host, owserver_port, 
+            flags=args.temp_scale,
+            verbose=args.debug, )
+    except protocol.ConnError as error:
+        print(f"Unable to open connection to '{owserver_host}:{owserver_port}'\nSystem error: {error}", file=sys.stderr)
+        sys.exit(1)
+    except protocol.ProtocolError as error:
+        print("'{owserver_host}:{owserver_port}' not an owserver?\nProtocol error: {error}", file=sys.stderr)
+        sys.exit(1)
 
     #period
     if "period" in args:
@@ -114,14 +158,26 @@ def main(sysargs):
 
     # Loop
     while True:
-        # owserver_connect( owserver, owserver_port )
-        # Tdevices = devs_with_temerature()
-        # Hdevices = devs_with_humidity()
-        data_string = " ".join([
-            " ".join(["T "+Temperature_read(d) for d in Tdevices]),
-            " ".join(["H "+Humidity_read(d) for d in Hdevices])
-        ])
-        upload( server, token, owserver_data )
+        # Get Temperatures
+        no_data = True
+        temperatures = []
+        for sensor in proxy.dir(slash=False, bus=False):
+            #stype = proxy.read(sensor + '/type').decode()
+            try:
+                temp = float(proxy.read(sensor + '/temperature'))
+                temperatures.append( temp )
+            except protocol.OwnetError:
+                pass
+        if len(temperatures)>0:
+            temperature_string = " ".join([f"T {t:.2f}" for t in temperatures])
+            no_data = False
+            
+        # Hdevices = devs_with_humidity() -- future
+        
+        if no_data:
+            upload( server, token, "no data" )
+        else:
+            upload( server, token, " ".join([temperature_string]) )
 
         if period==Null:
             # single shot
