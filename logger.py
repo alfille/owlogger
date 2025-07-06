@@ -29,14 +29,25 @@ import argparse
 import urllib
 from urllib.parse import urlparse
 import json
+import os
 
 class MyServer(BaseHTTPRequestHandler):
     debug = False # class variable
     def do_GET(self):
+                        
         # Respond to web request
+        print(f"PATH <{self.path}>")
         self.send_response(200)
         self.send_header("Content-type", "text/html")
         self.end_headers()
+
+        # test for file request
+        # needed for js and css
+        match self.path:
+            case "/air-datepicker.css" | "/air-datepicker.js":
+                with open(self.path.strip("/"),"rb") as f:
+                    self.wfile.write(f.read())
+                return
 
         # test URL
         if len(self.path) > 1:
@@ -67,17 +78,23 @@ class MyServer(BaseHTTPRequestHandler):
         if "date" in u:
             # Date found
             date = u["date"][0]
-            #print("found", date )
+            print("found", date )
         else:
             # Else use today
             date = datetime.date.today().isoformat()
-            #print("not found", date )
+            print("not found", date )
+            
+        # check date
+        try:
+            daystart = datetime.datetime.fromisoformat(date)
+        except:
+            daystart = datetime.date.today()
 
         # Get corresponding database entries for this date
         global db
         table_data = "".join(
             [ "<tr>"+"".join(["<td>"+c+"</td>" for c in row])+"</tr>"
-                for row in db.day_data( datetime.datetime.fromisoformat(date) ) ]
+                for row in db.day_data( daystart ) ]
             )
         if len(table_data)==0:
             table_data = "<tr><td colspan=2>&nbsp;&nbsp;No entries&nbsp;&nbsp;</td></tr>"
@@ -92,47 +109,49 @@ class MyServer(BaseHTTPRequestHandler):
                     tr:nth-child(even) {{background-color: #D6EEEE; border-bottom: 1px solid #ddd; }}
                     td {{ padding-left: 1em; padding-right: 1em; }}
                     body {{overflow:hidden; }}
-                    .top {{font-size:2em; }}
-                    .scroll {{overflow:scroll;height:100%;}}
+                    div {{ padding:10px; }}
+                    #uCal,input[type='text'] {{ font-size: 2em; }}
+                    .all {{position:fixed; top 0; left:0; width:100%; height:100%;display:flex;flex-direction:column; }}
+                    .scroll {{overflow:scroll;top:150px;}}
                 </style>
+                <link href="./air-datepicker.css" rel="stylesheet">
+                <script src="./air-datepicker.js"></script>
             </head>
-            <body onload=SetDate('{date}')>
-                <div class='top'>
-                    <input type='date' id='date_pick' oninput='NewDate()'>&nbsp;&nbsp;{date}
-                    <hr>
-                </div>
-                <div class='scroll'>
-                    <table>
-                        <tr><th>Time</th><th>Data</th></tr>
-                        {table_data}
-                    </table>
-                    <hr>
-                    <a href="https://github.com/alfille/logger">Logger by Paul H Alfille 2025</a>
+            <body>
+                <div class='all'>
+                    <div>Logger&nbsp;&nbsp;<button onclick="Today()">Today</button></div>
+                    <div><button id='Ucal' onclick="globalThis.dp.show()"> &#128467;</button><input id='new_cal' type="text" readonly></div>                    
+                    <div class='scroll'>
+                        <table>
+                            <tr><th>Time</th><th>Data</th></tr>
+                            {table_data}
+                        </table>
+                        <hr>
+                        <a href="https://github.com/alfille/logger">Logger by Paul H Alfille 2025</a>
+                    </div>
                 </div>
             </body>
             <script>
-                function SetDate(date) {{
-                    //console.log("SetDate",date)
-                    let d
-                    try {{
-                        d = new Date(date)
-                        if ( isNaN(d) ) {{
-                            d = new Date()
-                        }}
+                window.onload = () => {{
+                    const d = new Date("{daystart}")
+                    console.log("DATE",d)
+
+                    globalThis.dp = new AirDatepicker("#new_cal", {{
+                            onSelect(x) {{NewDate(x.date)}},
+                            isMobile:true,
+                            selectedDates:[d],
+                        }} ) ;
                     }}
-                    catch {{
-                        d = new Date()
-                    }}
-                    document.getElementById('date_pick').value = d.toISOString().split("T")[0]
-                }}
-                function NewDate() {{
-                    const newdate = document.getElementById('date_pick').value
-                    //console.log("NewDate",newdate)
+                function Today() {{ 
+                    NewDate(new Date()); 
+                    }} 
+                function NewDate(date) {{
+                    const d = date.toISOString().split("T")[0];
                     const url = new URL(location.href);
-                    url.searchParams.set('date', newdate);
+                    url.searchParams.set('date', d);
 
                     location.assign(url.search);
-                }}
+                    }}
             </script>
         </html>"""
 
