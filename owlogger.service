@@ -5,7 +5,7 @@ Requires=caddy.service
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /usr/bin/local/owlogger.py -s http://localhost:8001 
+ExecStart=/usr/bin/python3 /usr/local/bin/owlogger.py -s http://localhost:8001 
 WorkingDirectory=/var/lib/owlogger
 Restart=on-failure
 User=www-data

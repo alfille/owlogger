@@ -14,6 +14,7 @@ cp owlogger.py /usr/local/bin
 # database location
 mkdir -p  /var/lib/owlogger
 mkdir -p  /var/lib/owlogger
+chown -R www-data:www-data /var/lib/owlogger
 chmod 770 /var/lib/owlogger
 
 # systemd file
