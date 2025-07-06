@@ -36,7 +36,8 @@ class MyServer(BaseHTTPRequestHandler):
     def do_GET(self):
                         
         # Respond to web request
-        print(f"PATH <{self.path}>")
+        if self.debug:
+            print(f"PATH <{self.path}>")
         self.send_response(200)
         self.send_header("Content-type", "text/html")
         self.end_headers()
@@ -72,17 +73,17 @@ class MyServer(BaseHTTPRequestHandler):
                 return
             if u["token"][0] not in tokens:
                 # token doesn't match
+                if self.debug:
+                    print("Non-matching token:",u["token"][0])
                 return
 
         # parse url for date if present
         if "date" in u:
             # Date found
             date = u["date"][0]
-            print("found", date )
         else:
             # Else use today
             date = datetime.date.today().isoformat()
-            print("not found", date )
             
         # check date
         try:
@@ -90,73 +91,8 @@ class MyServer(BaseHTTPRequestHandler):
         except:
             daystart = datetime.date.today()
 
-        # Get corresponding database entries for this date
-        global db
-        table_data = "".join(
-            [ "<tr>"+"".join(["<td>"+c+"</td>" for c in row])+"</tr>"
-                for row in db.day_data( daystart ) ]
-            )
-        if len(table_data)==0:
-            table_data = "<tr><td colspan=2>&nbsp;&nbsp;No entries&nbsp;&nbsp;</td></tr>"
-
-        # Generate HTML
-        html = f"""
-        <html>
-            <head>
-                <title>Logger</title>
-                <style>
-                    table {{ border-collapse: collapse; }}
-                    tr:nth-child(even) {{background-color: #D6EEEE; border-bottom: 1px solid #ddd; }}
-                    td {{ padding-left: 1em; padding-right: 1em; }}
-                    body {{overflow:hidden; }}
-                    div {{ padding:10px; }}
-                    #uCal,input[type='text'] {{ font-size: 2em; }}
-                    .all {{position:fixed; top 0; left:0; width:100%; height:100%;display:flex;flex-direction:column; }}
-                    .scroll {{overflow:scroll;top:150px;}}
-                </style>
-                <link href="./air-datepicker.css" rel="stylesheet">
-                <script src="./air-datepicker.js"></script>
-            </head>
-            <body>
-                <div class='all'>
-                    <div>Logger&nbsp;&nbsp;<button onclick="Today()">Today</button></div>
-                    <div><button id='Ucal' onclick="globalThis.dp.show()"> &#128467;</button><input id='new_cal' type="text" readonly></div>                    
-                    <div class='scroll'>
-                        <table>
-                            <tr><th>Time</th><th>Data</th></tr>
-                            {table_data}
-                        </table>
-                        <hr>
-                        <a href="https://github.com/alfille/logger">Logger by Paul H Alfille 2025</a>
-                    </div>
-                </div>
-            </body>
-            <script>
-                window.onload = () => {{
-                    const d = new Date("{daystart}")
-                    console.log("DATE",d)
-
-                    globalThis.dp = new AirDatepicker("#new_cal", {{
-                            onSelect(x) {{NewDate(x.date)}},
-                            isMobile:true,
-                            selectedDates:[d],
-                        }} ) ;
-                    }}
-                function Today() {{ 
-                    NewDate(new Date()); 
-                    }} 
-                function NewDate(date) {{
-                    const d = date.toISOString().split("T")[0];
-                    const url = new URL(location.href);
-                    url.searchParams.set('date', d);
-
-                    location.assign(url.search);
-                    }}
-            </script>
-        </html>"""
-
         # Write page to browser
-        self.wfile.write(bytes(html, "utf-8"))
+        self.wfile.write( bytes(self.make_html( daystart), "utf-8") )
 
     def do_POST(self):
         # From putter.py
@@ -179,6 +115,102 @@ class MyServer(BaseHTTPRequestHandler):
     def do_PUT(self):
         self.do_POST()
 
+    def make_html( self, daystart ):
+        # Get corresponding database entries for this date
+        global db
+        table_data = "".join(
+            [ "<tr>"+"".join(["<td>"+c+"</td>" for c in row])+"</tr>"
+                for row in db.day_data( daystart ) ]
+            )
+        if len(table_data)==0:
+            table_data = "<tr><td colspan=2>&nbsp;&nbsp;No entries&nbsp;&nbsp;</td></tr>"
+
+        # Get days with data
+        dDays =  [ d[0] for d in db.distinct_days( daystart )]
+        #print( "Distinct days", dDays )
+
+        # Get months with data
+        mDays =  [ f"{daystart.year}-{m[0]}-01" for m in db.distinct_months( daystart )]
+        #print( "Distinct months", mDays )
+        
+        # Get years with data
+        yDays =  [ f"{y[0]}-01-01" for y in db.distinct_years()]
+        #print( "Distinct years", yDays )
+
+        # Generate HTML
+        return f"""
+        <html>
+            <head>
+                <title>Logger</title>
+                <style>
+                    table {{ border-collapse: collapse; }}
+                    tr:nth-child(even) {{background-color: #D6EEEE; border-bottom: 1px solid #ddd; }}
+                    td {{ padding-left: 1em; padding-right: 1em; }}
+                    body {{overflow:hidden; }}
+                    div {{ padding:10px; }}
+                    #uCal,input[type='text'] {{ font-size: 2em; }}
+                    .all {{position:fixed; top 0; left:0; width:100%; height:100%;display:flex;flex-direction:column; }}
+                    .scroll {{overflow:scroll;top:150px;}}
+                    .present {{background-color: #e6ffe6;}}
+                </style>
+                <link href="./air-datepicker.css" rel="stylesheet">
+                <script src="./air-datepicker.js"></script>
+            </head>
+            <body>
+                <div class='all'>
+                    <div>Logger&nbsp;&nbsp;<button onclick="Today()">Today</button></div>
+                    <div><button id='Ucal' onclick="globalThis.dp.show()"> &#128467;</button><input id='new_cal' type="text" readonly></div>                    
+                    <div class='scroll'>
+                        <table>
+                            <tr><th>Time</th><th>Data</th></tr>
+                            {table_data}
+                        </table>
+                        <hr>
+                        <a href="https://github.com/alfille/logger">Logger by Paul H Alfille 2025</a>
+                    </div>
+                </div>
+            </body>
+            <script>
+                window.onload = () => {{
+                    const d = new Date("{daystart}")
+                    
+                    goodDays={dDays};
+                    goodMonths={mDays};
+                    goodYears={yDays};
+
+                    function TestDate(x) {{
+                        switch (x.cellType) {{
+                            case 'day':
+                                return goodDays.includes(x.date.toISOString().split("T")[0]);
+                            case 'month':
+                                return goodMonths.includes(x.date.toISOString().split("T")[0]);
+                            case 'year':
+                                return goodYears.includes(x.date.toISOString().split("T")[0]);
+                            default:
+                                return false;
+                            }}
+                        }}
+
+                    globalThis.dp = new AirDatepicker("#new_cal", {{
+                            onSelect(x) {{NewDate(x.date)}},
+                            isMobile:true,
+                            selectedDates:[d],
+                            onRenderCell(x) {{ if (TestDate(x)) {{ return {{classes:'present'}};}} }},
+                        }} ) ;
+                    }}
+                function Today() {{ 
+                    NewDate(new Date()); 
+                    }} 
+                function NewDate(date) {{
+                    const d = date.toISOString().split("T")[0];
+                    const url = new URL(location.href);
+                    url.searchParams.set('date', d);
+
+                    location.assign(url.search);
+                    }}
+            </script>
+        </html>"""
+
 class database:
     # sqlite3 interface
     def __init__(self, database="./logger_data.db"):
@@ -190,17 +222,43 @@ class database:
                 date DATATIME DEFAULT CURRENT_TIMESTAMP, 
                 value TEXT
             );""" )
+        self.command(
+            """CREATE INDEX IF NOT EXISTS idx_date ON datalog(date);"""
+            )
 
     def add( self, value ):
         # Add a record
-        #print( f"Adding _{value}" )
+        if self.debug:
+            print( f"Adding _{value}" )
         self.command( """INSERT INTO datalog( value ) VALUES (?) """, ( value, ) )
 
     def day_data( self, day ):
         # Get records from a full day
         nextday = day + datetime.timedelta(days=1)
-        records = self.command( """SELECT time(date),value FROM datalog WHERE date BETWEEN date(?) AND date(?) ORDER BY date""", (day.isoformat(),nextday.isoformat()), True )
+        records = self.command( """SELECT TIME(date) as t, value FROM datalog WHERE DATE(date) BETWEEN DATE(?) AND DATE(?) ORDER BY t""", (day.isoformat(),nextday.isoformat()), True )
         #print(records)
+        return records
+        
+    def distinct_days( self, day ):
+        # get days with entries for range around day to inform the calendar
+        firstday = day + datetime.timedelta(days=-34)
+        lastday  = day + datetime.timedelta(days= 34)
+        #print("range",firstday,lastday)
+        records = self.command( """SELECT DISTINCT DATE(date) as d FROM datalog WHERE DATE(date) BETWEEN DATE(?) AND DATE(?) ORDER BY d""", (firstday.isoformat(),lastday.isoformat()), True )
+        # returns singleton tuples with date 
+        return records
+
+    def distinct_months( self, day ):
+        # get months with entries for this year to inform the calendar
+        year = str(day.year)
+        records = self.command( """SELECT DISTINCT strftime('%m', date) AS m FROM datalog WHERE strftime('%Y', date)=?  ORDER BY m""", (year,), True )
+        # returns singleton tuples with text month number (2 digits)
+        return records
+
+    def distinct_years( self ):
+        # get years with entries to inform the calendar
+        records = self.command( """SELECT DISTINCT strftime('%Y', date) AS y FROM datalog ORDER BY y""", None, True )
+        # returns singleton tuples with text year number (4 digits)
         return records
 
     def command( self, cmd, value_tuple=None, fetch=False ):
@@ -222,6 +280,7 @@ class database:
         except sqlite3.OperationalError as e:
             print(f"Failed to open database <{self.database}>:", e)
             raise e
+        #print("SQL ",records)
         return records
 
 def main(sysargs):
@@ -274,10 +333,10 @@ def main(sysargs):
         )
         
     args=parser.parse_args()
-    print(sysargs,args)
     
     if args.debug:
         print("Debugging output on")
+        print(sysargs,args)
         MyServer.debug = True
 
     # Handle server address
@@ -286,6 +345,7 @@ def main(sysargs):
     else:
         server = args.server
     print("server",server)
+    
     u = urllib.parse.urlparse(server)
     print(u)
     port = u.port
@@ -293,7 +353,7 @@ def main(sysargs):
         port = default_port
         
     webServer = HTTPServer((u.hostname, port), MyServer)
-    print("Server started http://%s:%s" % (u.hostname, port))
+    print("Server started %s:%s" % (u.hostname, port))
 
     global tokens
     if "tokens" in args:
