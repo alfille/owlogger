@@ -1,0 +1,15 @@
+[Unit]
+Description=Owlogger web server
+After=network.target caddy.service
+Requires=caddy.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/bin/local/owlogger.py -s http://localhost:8001 
+WorkingDirectory=/var/lib/owlogger
+Restart=on-failure
+User=www-data
+Group=www-data
+
+[Install]
+WantedBy=multi-user.target

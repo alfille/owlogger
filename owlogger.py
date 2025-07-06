@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # logger.py
 #
 # HTTP server program for logging data and serving pages
