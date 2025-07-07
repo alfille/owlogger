@@ -154,8 +154,8 @@ class MyServer(BaseHTTPRequestHandler):
                     .scroll {{overflow:scroll;top:150px;}}
                     .present {{background-color: #e6ffe6;}}
                 </style>
-                <link href="{os.path.dirname(os.path.abspath(__file__))}/air-datepicker.css" rel="stylesheet">
-                <script src="{os.path.dirname(os.path.abspath(__file__))}/air-datepicker.js"></script>
+                <link href="./air-datepicker.css" rel="stylesheet">
+                <script src="./air-datepicker.js"></script>
             </head>
             <body>
                 <div class='all'>
