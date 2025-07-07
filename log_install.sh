@@ -9,10 +9,10 @@ if [[ "$EUID" -ne 0 ]]; then
 fi
 
 # Logger program
-mkdir -p /usr/local/lib/owlogger
-cp owlogger.py /usr/local/lib/owlogger
-cp air-datepicker.js /usr/local/lib/owlogger
-cp air-datepicker.css /usr/local/owlogger
+mkdir -p              /usr/local/lib/owlogger
+cp owlogger.py        /usr/local/lib/owlogger
+cp air-datepicker.js  /usr/local/lib/owlogger
+cp air-datepicker.css /usr/local/lib/owlogger
 
 # database location
 mkdir -p  /var/lib/owlogger
