@@ -10,6 +10,8 @@ fi
 
 # Logger program
 cp owlogger.py /usr/local/bin
+cp air-datepicker.py /usr/local/bin
+cp air-datepicker.css /usr/local/bin
 
 # database location
 mkdir -p  /var/lib/owlogger
