@@ -144,10 +144,10 @@ class MyServer(BaseHTTPRequestHandler):
             <head>
                 <title>Logger</title>
                 <style>
-                    table {{ border-collapse: collapse; }}
+                    table {{ border-collapse: collapse;font-size:1em; }}
                     tr:nth-child(even) {{background-color: #D6EEEE; border-bottom: 1px solid #ddd; }}
                     td {{ padding-left: 1em; padding-right: 1em; }}
-                    body {{overflow:hidden; }}
+                    body {{overflow:hidden; font-size:2em;}}
                     div {{ padding:10px; }}
                     #uCal,input[type='text'] {{ font-size: 2em; }}
                     .all {{position:fixed; top 0; left:0; width:100%; height:100%;display:flex;flex-direction:column; }}
