@@ -1,0 +1,9 @@
+[Unit]
+Description=Post 1-wire data from owserver to remote owlogger
+After=owserver.service
+Requires=owserver.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/bin/owpost.py -o localhost:3504 -s https://remote.host:8001
+
