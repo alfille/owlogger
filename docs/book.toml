@@ -1,5 +1,16 @@
 [book]
+title = "OWLogger Documentation"
 authors = ["Paul H Alfille"]
 language = "en"
+description = "Documentation for the OWLogger project."
 src = "src"
 title = "owlogger"
+
+[build]
+build-dir = "book" # Output directory for the built book (relative to book.toml)
+
+[output.html]
+# If you plan to use a custom domain, uncomment and configure this:
+# cname = "docs.owlogger.com"
+# If you want to use the default GitHub Pages URL (username.github.io/repository-name):
+site-url = "/owlogger/" # Replace 'owlogger' with your repository name if different

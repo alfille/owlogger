@@ -1,0 +1,56 @@
+name: Deploy mdBook to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main # Or your default branch, e.g., 'master'
+  pull_request:
+    branches:
+      - main # Or your default branch, e.g., 'master'
+  workflow_dispatch: # Allows you to manually trigger the workflow
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install mdBook
+        run: |
+          # Install Rust toolchain (required for mdBook)
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          source "$HOME/.cargo/env"
+          cargo install mdbook
+
+      - name: Build mdBook
+        run: |
+          cd docs # Navigate into the docs directory where book.toml resides
+          mdbook build
+        env:
+          # If you set site-url in book.toml, you might not strictly need this,
+          # but it's good practice for base URLs.
+          # MDBook_BOOK_ROOT: ${{ github.repository_name }} # For default GitHub Pages URL structure
+          # Or, if you use a custom domain, you might not need this env var.
+          MDBook_BOOK_ROOT: /${{ github.event.repository.name }}/ # Example for default GitHub Pages path
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'docs/book' # This path is relative to the repository root
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
