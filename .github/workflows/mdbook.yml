@@ -19,7 +19,7 @@ jobs:
           cargo install mdbook --version "~0.4.0" # Use the appropriate version
 
       - name: Build mdBook
-        run: mdbook build docs
+        run: mdbook build docs --dest-dir ./docs/book
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
