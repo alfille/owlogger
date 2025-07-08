@@ -4,7 +4,6 @@ authors = ["Paul H Alfille"]
 language = "en"
 description = "Documentation for the OWLogger project."
 src = "src"
-title = "owlogger"
 
 [build]
 build-dir = "book" # Output directory for the built book (relative to book.toml)
