@@ -1,19 +1,28 @@
-# .github/workflows/mdbook.yml
-name: Deploy mdBook
+name: Deploy mdBook to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main # Or your default branch like 'master'
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # This is the crucial line
     steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo install mdbook
-      - run: mdbook build docs
-      - uses: peaceiris/actions-gh-pages@v3
+      - uses: actions/checkout@v4
+
+      - name: Install mdBook
+        run: |
+          # Install mdBook, e.g., using cargo
+          cargo install mdbook --version "~0.4.0" # Use the appropriate version
+
+      - name: Build mdBook
+        run: mdbook build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs/book
+          publish_dir: ./book # Or wherever your built book is located
