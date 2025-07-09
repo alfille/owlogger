@@ -144,24 +144,23 @@ class MyServer(BaseHTTPRequestHandler):
             <head>
                 <title>Logger</title>
                 <style>
+                    body {{overflow:hidden; font-size:2em;}}
+                    #all {{width:100%; height:100%;display:flex;flex-direction:column; padding:10px; }}
+                    #space {{display:flex; justify-content:space-between; flex-wrap:nowrap;}}
+                    #crowd {{display:flex; align-items:center; flex-wrap:nowrap;}}
+                    #uCal,input[type='text'] {{ font-size: 2em; }}
+                    .present {{background-color: #e6ffe6;}}
+                    #scroll {{overflow:scroll;}}
                     table {{ border-collapse: collapse;font-size:1em; }}
                     tr:nth-child(even) {{background-color: #D6EEEE; border-bottom: 1px solid #ddd; }}
                     td {{ padding-left: 1em; padding-right: 1em; }}
-                    body {{overflow:hidden; font-size:2em;}}
-                    div {{ padding:10px; }}
-                    #uCal,input[type='text'] {{ font-size: 2em; }}
-                    #space {{display=flex; justify-content:space-between; flex-wrap:nowrap;}}
-                    #crowd {{display=flex; align-items:center; flex-wrap:nowrap;}}
-                    #all {{width:100%; height:100%;display:flex;flex-direction:column; }}
-                    #scroll {{overflow:scroll;}}
-                    .present {{background-color: #e6ffe6;}}
                 </style>
                 <link href="./air-datepicker.css" rel="stylesheet">
                 <script src="./air-datepicker.js"></script>
             </head>
             <body>
                 <div id='all'>
-                    <div id="space"><span>owlogger</span><a href="">Today</a><a href="https://alfille.github.io/owlogger/">Help</a></div>
+                    <div id="space"><span>owlogger</span><a href="#" onclick="globalThis.Today()">Today</a><a href="https://alfille.github.io/owlogger/" target="_blank" rel="noopener noreferrer">Help</a></div>
                     <div id="crowd"><button id='Ucal' onclick="globalThis.dp.show()"> &#128467;</button><input id='new_cal' type="text" readonly></div>                    
                     <div id='scroll'>
                         <table>
@@ -169,7 +168,7 @@ class MyServer(BaseHTTPRequestHandler):
                             {table_data}
                         </table>
                         <hr>
-                        <a href="https://github.com/alfille/logger">Logger by Paul H Alfille 2025</a>
+                        <a href="https://github.com/alfille/logger" target="_blank" rel="noopener noreferrer">Logger by Paul H Alfille 2025</a>
                     </div>
                 </div>
             </body>
