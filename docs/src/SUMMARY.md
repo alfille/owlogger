@@ -17,7 +17,6 @@
 - [DETAILS](./details.md)
   - [Credit and Acknowledgment](./credit.md)
   - [Security](./security.md)
-  - [Components](./components.md)
   - [License](./license.md)
   - [Repository](./repository.md)
   - [Support](./support.md)

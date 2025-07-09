@@ -46,7 +46,7 @@ class MyServer(BaseHTTPRequestHandler):
         # test for file request
         # needed for js and css
         match self.path:
-            case "/air-datepicker.css" | "/air-datepicker.js":
+            case "/air-datepicker.css"|"/air-datepicker.js"|"/favicon.ico":
                 with open(self.path.strip("/"),"rb") as f:
                     self.wfile.write(f.read())
                 return
@@ -150,18 +150,20 @@ class MyServer(BaseHTTPRequestHandler):
                     body {{overflow:hidden; font-size:2em;}}
                     div {{ padding:10px; }}
                     #uCal,input[type='text'] {{ font-size: 2em; }}
-                    .all {{position:fixed; top 0; left:0; width:100%; height:100%;display:flex;flex-direction:column; }}
-                    .scroll {{overflow:scroll;top:150px;}}
+                    #space {{display=flex; justify-content:space-between; flex-wrap:nowrap;}}
+                    #crowd {{display=flex; align-items:center; flex-wrap:nowrap;}}
+                    #all {{width:100%; height:100%;display:flex;flex-direction:column; }}
+                    #scroll {{overflow:scroll;}}
                     .present {{background-color: #e6ffe6;}}
                 </style>
                 <link href="./air-datepicker.css" rel="stylesheet">
                 <script src="./air-datepicker.js"></script>
             </head>
             <body>
-                <div class='all'>
-                    <div>Logger&nbsp;&nbsp;<button onclick="Today()">Today</button></div>
-                    <div><button id='Ucal' onclick="globalThis.dp.show()"> &#128467;</button><input id='new_cal' type="text" readonly></div>                    
-                    <div class='scroll'>
+                <div id='all'>
+                    <div id="space"><span>owlogger</span><a href="">Today</a><a href="https://alfille.github.io/owlogger/">Help</a></div>
+                    <div id="crowd"><button id='Ucal' onclick="globalThis.dp.show()"> &#128467;</button><input id='new_cal' type="text" readonly></div>                    
+                    <div id='scroll'>
                         <table>
                             <tr><th>Time</th><th>Data</th></tr>
                             {table_data}
