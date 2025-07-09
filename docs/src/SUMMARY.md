@@ -15,6 +15,7 @@
   - [Database](./database.md)
   - [Customize](./customize.md)
 - [DETAILS](./details.md)
+  - [Credit and Acknowledgment](./credit.md)
   - [Security](./security.md)
   - [Components](./components.md)
   - [License](./license.md)
