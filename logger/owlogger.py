@@ -161,7 +161,8 @@ class MyServer(BaseHTTPRequestHandler):
             <body>
                 <div id='all'>
                     <div id="space"><span>owlogger</span><a href="#" onclick="globalThis.Today()">Today</a><a href="https://alfille.github.io/owlogger/" target="_blank" rel="noopener noreferrer">Help</a></div>
-                    <div id="crowd"><button id='Ucal' onclick="globalThis.dp.show()"> &#128467;</button><input id='new_cal' type="text" readonly></div>                    
+                    <div id="crowd"><button id='Ucal' onclick="globalThis.dp.show()"> &#128467;</button><input id='new_cal' type="text" size="10" readonly></div>                    
+                    <hr>
                     <div id='scroll'>
                         <table>
                             <tr><th>Time</th><th>Data</th></tr>
