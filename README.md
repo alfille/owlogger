@@ -1,29 +1,39 @@
-# logger
+# 🌡️ **owlogger**
 
-## In Brief
-__owlogger__ is a simple system for showing data collected by 1-wire sensors in a web browser.
+## ⚡ In Brief
 
-* Data flow is entirely outbound (except the web server)
-* Very low bandwidth
-* Local machine can be low resource (e.g. even a Raspberry Pi 3)
-* Open source. Python3
+**`owlogger`** is a lightweight, open-source system for displaying data from **1-wire sensors** in a web browser.
 
-__owlogger__ is a *portmanteau* of __owfs__ and __logging program__.
+### 🔍 Key Features:
+- 🔁 **Outbound-only data flow** (except for the web server)
+- 📶 **Ultra-low bandwidth**
+- 🍓 **Runs on low-resource devices** (e.g., Raspberry Pi 3)
+- 🐍 **Written in Python 3**
+- 🛠️ **Easily customizable**
+- 📖 **Well documented**
+- 🧩 **No vendor lock-in**
+- 📵 **No phone apps required**
+- 🆓 **Fully open source**
 
-## Design
+> The name **owlogger** is a *portmanteau* of **OWFS** and **logging program**.
+
+---
+
+## 🧬 Design Overview
 
 ![logger](logger.png)
 
-## More
+---
 
-[__Full documentation__](https://alfille.github.io/owlogger/)
+## 📚 Learn More
 
+👉 [**Full Documentation**](https://alfille.github.io/owlogger/)
 
-## About owlogger
+---
 
-* Author: Paul H Alfille 2025
-* Repository: [owlogger](https://github.com/alfille/owlogger)
-* License: MIT except pyownet is LGPL3
-* Language: python3
+## 👤 About owlogger
 
-
+- 🧑‍💻 **Author**: Paul H Alfille (2025)  
+- 🗃️ **Repository**: [GitHub – owlogger](https://github.com/alfille/owlogger)  
+- 📜 **License**: MIT (except `pyownet`, which is LGPL3)  
+- 💻 **Language**: Python 3  
