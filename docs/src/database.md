@@ -2,11 +2,21 @@
 
 Logged messages are stored in a database on the owlogger server in [SQL](https://www.w3schools.com/sql/sql_intro.asp) format. The implementation is very simple.
 
+## Does it matter?
+
+Knowing the actualy database internals is not required for using `owlogger` effectively. This information may be useful for:
+
+* developing add-on functionality to the system
+* doing more advanced data manipulation of analysis
+
+Otherwise, consider this part of the documentation as optional
+
 ## database file
 
-* `logger_data.db` by default
-* A different filename can be choses with the __-d__ command line option
-* placed in `/var/lib/owlogger` if you use the instllation script
+* `sqlite3` format
+* named `logger_data.db` by default
+* A different filename can be chosen with the __-d__ command line option
+* placed in `/var/lib/owlogger` if you use the installation script
 * the file will be automatically created if it doesn't exist
 
 ## table
@@ -23,7 +33,7 @@ Logged messages are stored in a database on the owlogger server in [SQL](https:/
 | data | datetime | timestamp of when entry created|
 | value | text | logged data text |
 
-In sqlite 
+In sqlite3: 
 ```
 $ sqlite3 logger_data.db 
 SQLite version 3.40.1 2022-12-28 14:03:47
@@ -46,8 +56,8 @@ COMMIT;
 * Primary index: `id`
   * required 
   * unique 
-  * generated autimatically
-  * not used
+  * generated automatically
+  * not used directly
 * Secondary index:`idx_date`
   * indexes field `date`
   * not (necessarily) unique
@@ -88,7 +98,7 @@ idx_date
                ORDER BY d;
 ```
 
-### Months with any data this year
+### Months with any data (this year)
 ```
             SELECT DISTINCT strftime('%m', date) AS m FROM datalog 
                WHERE strftime('%Y', date)=?  
@@ -108,10 +118,15 @@ Access directly with built-in [python sqlite3 module](https://docs.python.org/3/
 
 ### Web interface
 
+`owlogger` provides a native web interface. default port:8001
 
 ### Command line 
 
-[sqlite3](https://sqlite.org/index.html) official, rather bare-bones command line tool
+[sqlite3](https://sqlite.org/index.html) official, rather bare-bones command line tool. Example:
+```
+sqlite> .tables
+datalog
+```
 
 ### Graphical
 
