@@ -49,12 +49,16 @@ OWLogger ensures a **secure, outbound-only data flow** to your cloud server. Tha
 - No exposure to external threats
 
 Just clean, reliable data — wherever and whenever you need it.
+ 
+---
 
-## Can you add on?
+## 🛠️ Can you add on?
 
 - `owgeneralpost` lets you send any information to the logger, not just 1-wire data
 - Your data is stored in an `sqlite3` file, so very readable and accessible
 - The web display is simple HTML -- easily cutomizable
 - All the programs are open source, well documented and in widely known python3
+
+---
 
 ![owlogger](owlogger.png)

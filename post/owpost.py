@@ -17,24 +17,29 @@ import math
 import time
 from pyownet import protocol
 
+# for authentification
+try:
+    import jwt
+    has_jwt = True
+except:
+    has_jet = False
 
-def upload( server, token, data_string ):
-    if token==None:
-        j = json.dumps( {'data': data_string } )
+
+def upload( server, secret, data_string ):
+    data = json.dumps( {'data': data_string } )
+    if secret==None:
+        post( server, data, { "Content-Type": "application/text"} )
     else:
-        j = json.dumps( {'token':token, 'data': data_string } )
+        post( server, data, { 'Authorization': f'Bearer {secret}', 'Content-Type': 'application/text'} )
 
+def post( server, data, headers ): 
     try:
-        response = send_put(
-            server,
-            data = j ,
-            headers = { "Content-Type": "application/text"}
-            )
+        response = send_post( server, data, headers )
         global debug
         if debug:
             print( f"Return code={response.status_code} ({response.reason}) from {response.url}")
     except:
-        print( datetime.datetime.now(), data_string ) 
+        print( datetime.datetime.now(), data ) 
 
 def main(sysargs):
     # Command line first
@@ -43,14 +48,14 @@ def main(sysargs):
         description="Log 1-wire data externally to protect interior sensors. Transmittter component",
         epilog="By Paul H Alfille 2025 -- repository: https://github.com/alfille/logger")
 
-    # token list
+    # token
     parser.add_argument('-t','--token',
         required=False,
         default=argparse.SUPPRESS,
         dest="token",
         type=str,
-        nargs='*',
-        help='Token to send with data (optonal arbitrary text string)'
+        nargs='?',
+        help='Secret token to authentificate message (optonal arbitrary text string)'
         )
 
     # Server address
@@ -95,6 +100,16 @@ def main(sysargs):
         help="Use Fahrenheit temperature scale for readings. Default: Fahrenheit"
         )
 
+    # name
+    parser.add_argument('-n','--name',
+        required=False,
+        default="owpost",
+        dest="name",
+        nargs='?',
+        type=str,
+        help=f'Optional name for data source. Default owpost'
+        )
+        
     # periodic
     parser.add_argument('-p','--period',
         required=False,
@@ -117,11 +132,16 @@ def main(sysargs):
     args=parser.parse_args()
     print(sysargs,args)
 
-    #token
+    #JWT token
     if "token" in args:
-        token = args.token
+        if has_jwt:
+            secret = jwt.encode( {'name':args.name},args.token,algorithm='HS256')
+        else:
+            print("Error: token for JWT authentification supplied, but pyJWT not installed")
+            print("Suggest apt install python3-jwt")
+            sys.exit(2)
     else:
-        token = None
+        secret=None
 
     #server
     server = args.server
@@ -131,8 +151,6 @@ def main(sysargs):
     debug = args.debug
     if debug:
         print("Debugging on")
-
-
 
     #owserver
     if args.owserver.find("//")==-1:
@@ -173,7 +191,12 @@ def main(sysargs):
         # Get Temperatures
         no_data = True
         temperatures = []
-        for sensor in owproxy.dir(slash=False, bus=False):
+        try:
+            owdir = owproxy.dir(slash=False, bus=False)
+        except protocol.OwnetError:
+            print( "Cannot read owserver" )
+            owdir = []
+        for sensor in owdir:
             #stype = owproxy.read(sensor + '/type').decode()
             try:
                 temp = float(owproxy.read(sensor + '/temperature'))
@@ -187,9 +210,9 @@ def main(sysargs):
         # Hdevices = devs_with_humidity() -- future
         
         if no_data:
-            upload( server, token, "no data" )
+            upload( server, secret, "no data" )
         else:
-            upload( server, token, " ".join([temperature_string]) )
+            upload( server, secret, " ".join([temperature_string]) )
 
         if period==None:
             # single shot

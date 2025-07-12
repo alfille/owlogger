@@ -32,8 +32,19 @@ from urllib.parse import urlparse
 import json
 import os
 
+# for authentification
+try:
+    import jwt
+    has_jwt = True
+except:
+    has_jwt = False
+    
 class MyServer(BaseHTTPRequestHandler):
-    debug = False # class variable
+    # class variables
+    debug = False
+    token = None
+    db = None
+    
     def do_GET(self):
                         
         # Respond to web request
@@ -96,46 +107,61 @@ class MyServer(BaseHTTPRequestHandler):
         self.wfile.write( bytes(self.make_html( daystart), "utf-8") )
 
     def do_POST(self):
-        # From putter.py
+        if self.token:
+            # get token
+            auth_header = self.headers.get('Authorization')
+            if not auth_header or not authheader.startswith('Bearer'):
+                self.send_response(401)
+                self.end_headers()
+                self.wfile.write(b"Token missing or incorrect")
+                return
+            # test token
+            h_token = authheader.split(' ')[1]
+            try:
+                jwt.decode( h_token, token, algorithms=['HS256'])
+            except jwt.ExpiredSignatureError:
+                self.send_response(401)
+                self.wfile.write(b"Token missing or incorrect")
+                self.end_headers()
+                self.wfile.write(b"Token expired")
+                return
+            except jwt.InvalieTokenError:
+                self.send_response(401)
+                self.end_headers()
+                self.wfile.write(b"Token invalid")
+                return
         content_length = int(self.headers['Content-Length'])
         body_str = self.rfile.read(content_length)
         body = json.loads(body_str)
         self.send_response(200)
         self.end_headers()
-#        response = BytesIO()
-#        response.write(b'This is POST request. ')
-#        response.write(b'Received: ')
-#        response.write(body_str)
-#        self.wfile.write(response.getvalue())
 #        print(body['data'])
         if self.debug:
             print("POST ",body)
-        global db
-        db.add( body['data'])
+        self.db.add( body['data'])
 
     def do_PUT(self):
         self.do_POST()
 
     def make_html( self, daystart ):
         # Get corresponding database entries for this date
-        global db
         table_data = "".join(
             [ "<tr>"+"".join(["<td>"+c+"</td>" for c in row])+"</tr>"
-                for row in db.day_data( daystart ) ]
+                for row in self.db.day_data( daystart ) ]
             )
         if len(table_data)==0:
             table_data = "<tr><td colspan=2>&nbsp;&nbsp;No entries&nbsp;&nbsp;</td></tr>"
 
         # Get days with data
-        dDays =  [ d[0] for d in db.distinct_days( daystart )]
+        dDays =  [ d[0] for d in self.db.distinct_days( daystart )]
         #print( "Distinct days", dDays )
 
         # Get months with data
-        mDays =  [ f"{daystart.year}-{m[0]}-01" for m in db.distinct_months( daystart )]
+        mDays =  [ f"{daystart.year}-{m[0]}-01" for m in self.db.distinct_months( daystart )]
         #print( "Distinct months", mDays )
         
         # Get years with data
-        yDays =  [ f"{y[0]}-01-01" for y in db.distinct_years()]
+        yDays =  [ f"{y[0]}-01-01" for y in self.db.distinct_years()]
         #print( "Distinct years", yDays )
 
         # Generate HTML
@@ -306,14 +332,14 @@ def main(sysargs):
         help=f'database file location (optional) default={dbfile}'
         )
 
-    # token list
-    parser.add_argument('-t','--tokens',
+    # secret token for JWT authentification
+    parser.add_argument('-t','--token',
         required=False,
         default=argparse.SUPPRESS,
-        dest="tokens",
+        dest="token",
         type=str,
-        nargs='*',
-        help='Token list to accept from putter.py (optonal)'
+        nargs='?',
+        help='Optional authentification token (text string) to match with data source'
         )
 
     # Server address
@@ -343,6 +369,17 @@ def main(sysargs):
         print(sysargs,args)
         MyServer.debug = True
 
+    #JWT token
+    if "token" in args:
+        if has_jwt:
+            MyServer.token = args.token
+        else:
+            print("Error: token for JWT authentification supplied, but pyJWT not installed")
+            print("Suggest apt install python3-jwt")
+            sys.exit(2)
+    else:
+        MyServer.token=None
+
     # Handle server address
     if args.server.find('//')==-1:
         server = '//'.join(['http:',args.server])
@@ -359,14 +396,7 @@ def main(sysargs):
     webServer = HTTPServer((u.hostname, port), MyServer)
     print("Server started %s:%s" % (u.hostname, port))
 
-    global tokens
-    if "tokens" in args:
-        tokens = args.tokens
-    else:
-        tokens = None
-
-    global db
-    db = database(args.dbfile)
+    MyServer.db = database(args.dbfile)
 
     try:
         webServer.serve_forever()
