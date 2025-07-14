@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# logger.py
+# owlogger.py
 #
 # HTTP server program for logging data and serving pages
 # Uses putter.py on data upload side
@@ -29,6 +29,8 @@ import datetime
 import argparse
 import urllib
 from urllib.parse import urlparse
+import bcrypt
+import base64
 import json
 import os
 
@@ -39,33 +41,42 @@ try:
 except:
     has_jwt = False
     
-class MyServer(BaseHTTPRequestHandler):
+class OWLogServer(BaseHTTPRequestHandler):
     # class variables
     debug = False
     token = None
     db = None
+    no_password = False
     
     def do_GET(self):
                         
         # Respond to web request
         if self.debug:
             print(f"PATH <{self.path}>")
-        self.send_response(200)
-        self.send_header("Content-type", "text/html")
-        self.end_headers()
 
         # test for file request
         # needed for js and css
         match self.path:
+            # check for permitted file requests (only a few carefully chosen)
             case "/air-datepicker.css"|"/air-datepicker.js"|"/favicon.ico":
                 with open(self.path.strip("/"),"rb") as f:
+                    self._good_get()
                     self.wfile.write(f.read())
                 return
 
-        # test URL
+        # test URL -- only queries allowed
         if len(self.path) > 1:
             if self.path[1] != '?':
+                ## null response to random url
+                self._good_get()
                 return
+
+        # test username and password
+        if self._access_forbidden():
+            return self._send_auth_challenge()
+        
+        # Good user, continue 
+        self._good_get()
 
         # parse url
         try:
@@ -75,19 +86,6 @@ class MyServer(BaseHTTPRequestHandler):
 
         if self.debug:
             print("GET ",u)
-
-        # test for tokens (if specified)
-        global tokens
-        if tokens != None:
-            # token list specified
-            if "token" not in u:
-                # token not sent
-                return
-            if u["token"][0] not in tokens:
-                # token doesn't match
-                if self.debug:
-                    print("Non-matching token:",u["token"][0])
-                return
 
         # parse url for date if present
         if "date" in u:
@@ -104,46 +102,49 @@ class MyServer(BaseHTTPRequestHandler):
             daystart = datetime.date.today()
 
         # Write page to browser
-        self.wfile.write( bytes(self.make_html( daystart), "utf-8") )
+        self.wfile.write( bytes(self._make_html( daystart), "utf-8") )
 
     def do_POST(self):
+        # Is JWT enabled in owlogger? (enabled by token in command line)
         if self.token:
             # get token
             auth_header = self.headers.get('Authorization')
             if not auth_header or not authheader.startswith('Bearer'):
-                self.send_response(401)
-                self.end_headers()
-                self.wfile.write(b"Token missing or incorrect")
-                return
+                return self._bad_post("Token missing")
             # test token
             h_token = authheader.split(' ')[1]
             try:
                 jwt.decode( h_token, token, algorithms=['HS256'])
             except jwt.ExpiredSignatureError:
-                self.send_response(401)
-                self.wfile.write(b"Token missing or incorrect")
-                self.end_headers()
-                self.wfile.write(b"Token expired")
-                return
-            except jwt.InvalieTokenError:
-                self.send_response(401)
-                self.end_headers()
-                self.wfile.write(b"Token invalid")
-                return
+                return self._bad_post("Token expired")
+            except jwt.InvalidTokenError:
+                return self._bad_post( "Token invalid")
         content_length = int(self.headers['Content-Length'])
         body_str = self.rfile.read(content_length)
         body = json.loads(body_str)
-        self.send_response(200)
-        self.end_headers()
-#        print(body['data'])
+#        self.send_response(200)
+#        self.end_headers()
+        self._good_get()
         if self.debug:
             print("POST ",body)
         self.db.add( body['data'])
+        
+    def _bad_post( self, message ):
+        self.send_response(401)
+        self.end_headers()
+        self.wfile.write(message.encode('utf-8'))
+        if self.debug:
+            print(message)
+            
+    def _good_get( self ):
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
+        self.end_headers()
 
     def do_PUT(self):
         self.do_POST()
 
-    def make_html( self, daystart ):
+    def _make_html( self, daystart ):
         # Get corresponding database entries for this date
         table_data = "".join(
             [ "<tr>"+"".join(["<td>"+c+"</td>" for c in row])+"</tr>"
@@ -239,12 +240,53 @@ class MyServer(BaseHTTPRequestHandler):
                     }}
             </script>
         </html>"""
+        
+    def _send_auth_challenge(self):
+        """Sends an HTTP 401 Unauthorized response with a Basic Auth challenge."""
+        print("Sending authentication challenge (401 Unauthorized)...")
+        self.send_response(401)
+        self.send_header('WWW-Authenticate', f'Basic realm="Restricted area"')
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+        self.wfile.write(b'<h1>Authentication Required</h1><p>Please provide valid credentials.</p>')
+
+    def _access_forbidden( self ):
+        if self.no_password:
+            return False # default good
+        
+        # Check header
+        auth_header = self.headers.get('Authorization')
+        if auth_header is None:
+            return True # bad
+        if not auth_header.tolower.startswith("basic"):
+            return True # bad
+        
+        # Extract the base64 encoded part
+        encoded_credentials = auth_header.split(' ')[1]
+        
+        try:
+            # Decode from base64 and then from bytes to string
+            decoded_credentials = base64.b64decode(encoded_credentials).decode('utf-8')
+            username, password = decoded_credentials.split(':', 1)
+        except (ValueError, UnicodeDecodeError) as e:
+            print(f"Error decoding credentials: {e}")
+            return True # bad
+
+        results = self.db.get_password( username )
+        if len(results) != 1:
+            return True # bad -- not in database
+            
+        if bcrypt.checkpw(password.encode('utf-8'), results[0][0] ):
+            return False ; # password ok!
+            
+        return True # Bad 
 
 class database:
     # sqlite3 interface
     def __init__(self, database="./logger_data.db"):
         # Create database if needed
         self.database = database
+        # log table
         self.command(
             """CREATE TABLE IF NOT EXISTS datalog (
                 id INTEGER PRIMARY KEY, 
@@ -254,6 +296,43 @@ class database:
         self.command(
             """CREATE INDEX IF NOT EXISTS idx_date ON datalog(date);"""
             )
+        # version table (single record)
+        self.command(
+            """CREATE TABLE IF NOT EXISTS version (
+                id INTEGER PRIMARY KEY CHECK (id = 1), 
+                version INTEGER DEFAULT 0
+            );""" )
+        # user/password table
+        self.command(
+            """CREATE TABLE IF NOT EXISTS userlist (
+                username TEXT PRIMARY KEY,
+                password_hash TEXT NOT NULL
+            );""" )
+
+    def get_version( self ):
+        try:
+            records = self.command( """SELECT version FROM version WHERE id = 1""", None, True )
+        except:
+            return 0
+        if len(records)==0:
+            return 0;
+        return records[0][0]
+
+    def set_version( self, v ):
+        self.command( 
+            """INSERT INTO version( id, version)
+                VALUES (1, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    version = excluded.version
+                ;""", ( v, ), False )
+        
+    def set_password( self, username, password_hash ):
+        self.command( 
+            """INSERT INTO userlist( username, password_hash )
+                VALUES (?, ?)
+                ON CONFLICT(username) DO UPDATE SET
+                    password_hash = excluded.password_hash
+                ;""", ( username, password_hash ), False )
 
     def add( self, value ):
         # Add a record
@@ -290,6 +369,18 @@ class database:
         # returns singleton tuples with text year number (4 digits)
         return records
 
+    def get_password( self, username ):
+        # get password if exists
+        records = self.command( """SELECT password_hash FROM userlist WHERE username=?""", (username,), True )
+        # returns single element list or empty list
+        return records
+
+    def hash_password(self, password):
+        """Hashes a plaintext password using bcrypt."""
+        # bcrypt.hashpw expects bytes, so encode the password
+        # bcrypt.gensalt() generates a random salt and appropriate cost factor
+        return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
     def command( self, cmd, value_tuple=None, fetch=False ):
         # Connect to database and handle command
         #print(cmd)
@@ -307,40 +398,23 @@ class database:
                 records = None
                 conn.commit()
         except sqlite3.OperationalError as e:
-            print(f"Failed to open database <{self.database}>:", e)
+            print(f"Failed to open database <{self.database}>: {e}")
             raise e
         #print("SQL ",records)
         return records
+        
+# for setting password -- separat program flow
+def set_password( db, username, password ):
+    db.set_password( username, bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8') )
 
 def main(sysargs):
     
     dbfile = "./logger_data.db"
     # Command line first
     parser = argparse.ArgumentParser(
-        prog="1-wire Logger",
-        description="Log 1-wire data externally to protect interior environment\nLogger and webserver component",
-        epilog="Repository: https://github.com/alfille/logger")
-
-    # Database file
-    dbfile = "logger_data.db"
-    parser.add_argument('-f','--file',
-        required=False,
-        default=dbfile,
-        dest="dbfile",
-        type=str,
-        nargs='?',
-        help=f'database file location (optional) default={dbfile}'
-        )
-
-    # secret token for JWT authentification
-    parser.add_argument('-t','--token',
-        required=False,
-        default=argparse.SUPPRESS,
-        dest="token",
-        type=str,
-        nargs='?',
-        help='Optional authentification token (text string) to match with data source'
-        )
+        prog="owlogger",
+        description="Logs 1-wire data to a database that can be viewed on the web. Works with 'owpost' and 'generalpost'",
+        epilog="Repository: https://github.com/alfille/owlogger")
 
     # Server address
     default_port = 8001
@@ -353,13 +427,43 @@ def main(sysargs):
         help=f'Server IP address and port (optional) default={server}'
         )
         
+    # secret token for JWT authentification
+    parser.add_argument('-t','--token',
+        required=False,
+        default=argparse.SUPPRESS,
+        dest="token",
+        type=str,
+        nargs='?',
+        help='Optional authentification token (text string) to match with owpost or generalpost. JWT secret.'
+        )
+
+    # Database file
+    dbfile = "logger_data.db"
+    parser.add_argument('-f','--file',
+        required=False,
+        default=dbfile,
+        dest="dbfile",
+        type=str,
+        nargs='?',
+        help=f'database file location (optional) default={dbfile}'
+        )
+
     # debug
     parser.add_argument( "-d", "--debug",
         required = False,
         default = False,
         dest="debug",
         action="store_true",
-        help="Turn on some debugging output"
+        help="Print debugging information"
+        )
+        
+    # no password
+    parser.add_argument( "--no_password",
+        required = False,
+        default = False,
+        dest="no_password",
+        action="store_true",
+        help="Turns off password protection"
         )
         
     args=parser.parse_args()
@@ -367,18 +471,20 @@ def main(sysargs):
     if args.debug:
         print("Debugging output on")
         print(sysargs,args)
-        MyServer.debug = True
+        OWLogServer.debug = True
 
     #JWT token
     if "token" in args:
         if has_jwt:
-            MyServer.token = args.token
+            OWLogServer.token = args.token
         else:
             print("Error: token for JWT authentification supplied, but pyJWT not installed")
             print("Suggest apt install python3-jwt")
             sys.exit(2)
     else:
-        MyServer.token=None
+        OWLogServer.token=None
+        
+    OWLogServer.no_password = args.no_password
 
     # Handle server address
     if args.server.find('//')==-1:
@@ -393,10 +499,10 @@ def main(sysargs):
     if port==None:
         port = default_port
         
-    webServer = HTTPServer((u.hostname, port), MyServer)
+    webServer = HTTPServer((u.hostname, port), OWLogServer)
     print("Server started %s:%s" % (u.hostname, port))
 
-    MyServer.db = database(args.dbfile)
+    OWLogServer.db = database(args.dbfile)
 
     try:
         webServer.serve_forever()
