@@ -13,11 +13,19 @@ import sqlite3
 
 import sys
 import argparse
-import bcrypt
 import base64
 import getpass
+
+# for encryption
+try:
+    import bcrypt
+except:
+    print("bcrypt module needs to be installed")
+    print("either 'pip install bcrypt' or 'apt install python3-bcrypt'")
+    sys.exit(1)
     
-class database:
+    
+class Database:
     # sqlite3 interface
     def __init__(self, database="./logger_data.db"):
         # Create database if needed
@@ -41,7 +49,7 @@ class database:
         # user/password table
         self.command(
             """CREATE TABLE IF NOT EXISTS userlist (
-                username TEXT PRIMARY KEY,
+                username TEXT PRIMARY KEY,
                 password_hash TEXT NOT NULL
             );""" )
 
@@ -75,11 +83,11 @@ class database:
             """DELETE FROM userlist WHERE username = ? ;""", (username,), False 
             )
 
-    def get_password( self, username ):
-        # get password if exists
-        records = self.command( """SELECT password_hash FROM userlist WHERE username=?""", (username,), True )
-        # returns single element list or empty list
-        return records
+    def list_users( self ):
+        results = self.command(
+            """SELECT username FROM userlist ORDER BY username ;""", None, True 
+            )
+        return results
 
     def command( self, cmd, value_tuple=None, fetch=False ):
         # Connect to database and handle command
@@ -116,13 +124,86 @@ def add_user( db, username ):
         
 def remove_user( db, username ):
     db.del_password( username )
+    
+def list_users( db ):
+    print( '\n'.join([ u[0] for u in db.list_users() ]) )
 
 def main(sysargs):
     
-    dbfile = "./logger_data.db"
-    # Command line first
+    # Look for a config file location (else default) 
+    # read it in TOML format
+    # allow command line parameters to over-rule
+    
+    # Step 1: Parse only the --config argument
     parser = argparse.ArgumentParser(
-        prog="owlog_user",
+        add_help=False
+        )
+    
+    config = "/etc/owlogger/owlogger.toml"
+    # config
+    parser.add_argument("--config",
+        required=False,
+        default=config,
+        dest="config",
+        type=str,
+        nargs="?",
+        help=f"Location of any configuration file. Optional default={config}"
+        )
+    args, remaining_argv = parser.parse_known_args()
+
+    # Process TOML
+    # TOML file
+    if "config" in args:
+        try:
+            with open( initial_args.config, "rb" ) as c:
+                contents = c.readlines()
+                try:
+                    toml=tomllib.loads(contents)
+                except TOMLDecodeError as e:
+                    for lin in zip(range(1,200),contents.split("\n")):
+                        print(f"{lin[0]:3d}. {lin[1]}")
+                    print(f"Trouble reading configuration file {args.config}: {e.msg}")
+                    sys.exit(1)
+        except Exception as e:
+            print(f"Cannot open TOML configuration file: {args.config}")
+            toml={}
+
+
+    # Second pass at command line
+    parser = argparse.ArgumentParser(
+        parents=[parser],
+        add_help=False
+        )
+    
+    # Database file
+    dbfile = "./logger_data.db"
+    parser.add_argument('-f','--file',
+        required=False,
+        default=toml.get("database",dbfile),
+        dest="database",
+        type=str,
+        nargs='?',
+        help=f'database file location (optional) default={dbfile}'
+        )
+
+    parser.add_argument("-l", "--list",
+        required=False,
+        default=False,
+        dest="list",
+        action="store_true",
+        help=f"List users registered in database"
+        )
+    args, remaining_argv = parser.parse_known_args()
+
+    db = Database(args.database)
+
+    if args.list:
+        list_users(db)
+        return
+
+    # third pass
+    parser = argparse.ArgumentParser(
+        parents=[parser],
         description="Add users and passwords to database for `owlogger` security",
         epilog="Repository: https://github.com/alfille/owlogger")
 
@@ -135,31 +216,17 @@ def main(sysargs):
     parser.add_argument( "-r", "--remove",
         required = False,
         dest="remove",
-        default=False,
+        default=toml.get("remove",False),
         action="store_true",
         help="Remove user from this database"
         )
     
-    # Database file
-    dbfile = "logger_data.db"
-    parser.add_argument('-f','--file',
-        required=False,
-        default=dbfile,
-        dest="dbfile",
-        type=str,
-        nargs='?',
-        help=f'database file location (optional) default={dbfile}'
-        )
-
     args=parser.parse_args()
     
-    db = database(args.dbfile)
-
     if args.remove:
         remove_user( db, args.username )
     else:
         add_user(    db, args.username )
-
  
 if __name__ == "__main__":
     sys.exit(main(sys.argv))

@@ -21,25 +21,32 @@ import sqlite3
 # Wait for put input
 # Add to database
 
-
+import argparse
+import base64
+import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from io import BytesIO
+import json
 import sys
-import datetime
-import argparse
+import tomllib
 import urllib
 from urllib.parse import urlparse
-import bcrypt
-import base64
-import json
-import os
 
 # for authentification
 try:
     import jwt
-    has_jwt = True
 except:
-    has_jwt = False
+    print("JWT module needs to be installed")
+    print("either 'pip install PyJWT' or 'apt install python3-jwt'")
+    sys.exit(1)
+
+# for encryption
+try:
+    import bcrypt
+except:
+    print("bcrypt module needs to be installed")
+    print("either 'pip install bcrypt' or 'apt install python3-bcrypt'")
+    sys.exit(1)
     
 class OWLogServer(BaseHTTPRequestHandler):
     # class variables
@@ -258,7 +265,7 @@ class OWLogServer(BaseHTTPRequestHandler):
         auth_header = self.headers.get('Authorization')
         if auth_header is None:
             return True # bad
-        if not auth_header.tolower.startswith("basic"):
+        if not auth_header.lower().startswith("basic"):
             return True # bad
         
         # Extract the base64 encoded part
@@ -276,12 +283,12 @@ class OWLogServer(BaseHTTPRequestHandler):
         if len(results) != 1:
             return True # bad -- not in database
             
-        if bcrypt.checkpw(password.encode('utf-8'), results[0][0] ):
+        if bcrypt.checkpw(password.encode('utf-8'), results[0][0].encode('utf-8') ):
             return False ; # password ok!
             
         return True # Bad 
 
-class database:
+class Database:
     # sqlite3 interface
     def __init__(self, database="./logger_data.db"):
         # Create database if needed
@@ -305,7 +312,7 @@ class database:
         # user/password table
         self.command(
             """CREATE TABLE IF NOT EXISTS userlist (
-                username TEXT PRIMARY KEY,
+                username TEXT PRIMARY KEY,
                 password_hash TEXT NOT NULL
             );""" )
 
@@ -409,28 +416,69 @@ def set_password( db, username, password ):
 
 def main(sysargs):
     
-    dbfile = "./logger_data.db"
-    # Command line first
+    # Look for a config file location (else default) 
+    # read it in TOML format
+    # allow command line parameters to over-rule
+    
+    # Step 1: Parse only the --config argument
     parser = argparse.ArgumentParser(
+        add_help=False
+        )
+    
+    config = "/etc/owlogger/owlogger.toml"
+    # config
+    parser.add_argument("--config",
+        required=False,
+        default=config,
+        dest="config",
+        type=str,
+        nargs="?",
+        help=f"Location of any configuration file. Optional default={config}"
+        )
+    args, remaining_argv = parser.parse_known_args()
+
+    # Process TOML
+    # TOML file
+    if "config" in args:
+        try:
+            with open( initial_args.config, "rb" ) as c:
+                contents = c.readlines()
+                try:
+                    toml=tomllib.loads(contents)
+                except TOMLDecodeError as e:
+                    for lin in zip(range(1,200),contents.split("\n")):
+                        print(f"{lin[0]:3d}. {lin[1]}")
+                    print(f"Trouble reading configuration file {args.config}: {e.msg}")
+                    sys.exit(1)
+        except Exception as e:
+            print(f"Cannot open TOML configuration file: {args.config}")
+            toml={}
+
+
+    # Second pass at command line
+    parser = argparse.ArgumentParser(
+        parents=[parser],
         prog="owlogger",
         description="Logs 1-wire data to a database that can be viewed on the web. Works with 'owpost' and 'generalpost'",
-        epilog="Repository: https://github.com/alfille/owlogger")
+        epilog="Repository: https://github.com/alfille/owlogger"
+        )
 
     # Server address
     default_port = 8001
     server = f"localhost:{default_port}"
     parser.add_argument('-s','--server',
         required=False,
-        default=server,
+        default=toml.get("server",server),
         dest="server",
         nargs='?',
+        type=str,
         help=f'Server IP address and port (optional) default={server}'
         )
         
     # secret token for JWT authentification
     parser.add_argument('-t','--token',
         required=False,
-        default=argparse.SUPPRESS,
+        default=toml.get("token",argparse.SUPPRESS),
         dest="token",
         type=str,
         nargs='?',
@@ -438,11 +486,11 @@ def main(sysargs):
         )
 
     # Database file
-    dbfile = "logger_data.db"
+    dbfile = "./logger_data.db"
     parser.add_argument('-f','--file',
         required=False,
-        default=dbfile,
-        dest="dbfile",
+        default=toml.get("database",dbfile),
+        dest="database",
         type=str,
         nargs='?',
         help=f'database file location (optional) default={dbfile}'
@@ -451,7 +499,7 @@ def main(sysargs):
     # debug
     parser.add_argument( "-d", "--debug",
         required = False,
-        default = False,
+        default = toml.get("debug",False),
         dest="debug",
         action="store_true",
         help="Print debugging information"
@@ -460,13 +508,27 @@ def main(sysargs):
     # no password
     parser.add_argument( "--no_password",
         required = False,
-        default = False,
+        default = toml.get("no_password",False),
         dest="no_password",
         action="store_true",
         help="Turns off password protection"
         )
         
-    args=parser.parse_args()
+    args=parser.parse_args(remaining_argv)
+    print("args",args)
+    
+    # TOML file
+    if "config" in args:
+        try:
+            with open( args.config, "rb" ) as c:
+                try:
+                    toml=tomllib.load(c)
+                except TOMLDecodeError as e:
+                    print(f"Trouble reading configuration file {args.config}: {e.msg}")
+                    sys.exit(1)
+        except Exception as e:
+            print(f"Cannot open TOML configuration file: {args.config}")
+            toml={}
     
     if args.debug:
         print("Debugging output on")
@@ -474,15 +536,7 @@ def main(sysargs):
         OWLogServer.debug = True
 
     #JWT token
-    if "token" in args:
-        if has_jwt:
-            OWLogServer.token = args.token
-        else:
-            print("Error: token for JWT authentification supplied, but pyJWT not installed")
-            print("Suggest apt install python3-jwt")
-            sys.exit(2)
-    else:
-        OWLogServer.token=None
+    OWLogServer.token = args.get("token",None)
         
     OWLogServer.no_password = args.no_password
 
@@ -502,7 +556,7 @@ def main(sysargs):
     webServer = HTTPServer((u.hostname, port), OWLogServer)
     print("Server started %s:%s" % (u.hostname, port))
 
-    OWLogServer.db = database(args.dbfile)
+    OWLogServer.db = Database(args.database)
 
     try:
         webServer.serve_forever()
