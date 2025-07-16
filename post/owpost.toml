@@ -1,0 +1,33 @@
+# owpost configuration file
+# in TOML format https://toml.io/en/
+#
+# Normally resides in /etc/owlogger/owpost.toml
+# used for owpost.py and generalpost.py
+#
+
+# server location
+# usually a valid domain address and 8001 for proxied port
+server="http://localhost:8001"
+
+# owserver location
+# Usually local and on well-known port
+owserver="localhost:4304"
+
+# name
+# to distinguish multiple sources
+name="owpost"
+
+# Authentification token
+token="simple_string"
+
+# Temperature
+# only one is needed and default is Fahrenheit
+Fahenheit=true
+Celsius=false
+
+# debugging output (for testing)
+debug=false
+
+# period
+# better done in systemd or cron!
+#period=15

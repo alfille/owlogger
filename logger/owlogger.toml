@@ -1,18 +1,21 @@
-# owpost configuration file
+# owlogger configuration file
 # in TOML format https://toml.io/en/
 #
 # Normally resides in /etc/owlogger/owserver.toml
 # used for owlogger.py and owlog_user.py
 #
 
-# owserver location
-#  for rever-proxy protection (caddy)
-server="localhosst:18001"
+# this server location
+#  for reverse-proxy protection (caddy)
+server="http://localhost:18001"
 
 # database for logging (sqlite3 format)
 database="/var/lib/owlogger/logger_data.db"
 
-# bypass passwords? (for testing)
+# bypass passwo# Authentification token
+token="simple_string"
+
+rds? (for testing)
 no_password=false
 
 # debugging output (for testing)
