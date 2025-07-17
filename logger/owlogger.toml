@@ -7,7 +7,7 @@
 
 # this server location
 #  for reverse-proxy protection (caddy)
-server="http://localhost:18001"
+server="http://localhost:8001"
 
 # database for logging (sqlite3 format)
 database="/var/lib/owlogger/logger_data.db"
@@ -15,7 +15,7 @@ database="/var/lib/owlogger/logger_data.db"
 # bypass passwo# Authentification token
 token="simple_string"
 
-rds? (for testing)
+# No passwords? (for testing)
 no_password=false
 
 # debugging output (for testing)
