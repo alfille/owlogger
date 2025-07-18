@@ -4,26 +4,34 @@
 # Normally resides in /etc/owlogger/owpost.toml
 # used for owpost.py and generalpost.py
 #
+# See https://github.com/alfille/owlogger
 
-# server location
-# usually a valid domain address and 8001 for proxied port
+# blank lines and text after '#' comments are ignored
+
+# server location (external)
+# usually a valid subdomain address
+#server=owlogger.mypvs.net
+
+# for testing if owlogger in running on same machine:
 server="http://localhost:8001"
 
-# owserver location
+# owserver location (internal)
 # Usually local and on well-known port
 owserver="localhost:4304"
 
 # name
 # to distinguish multiple sources
+# Choose a real, insightful name
 name="owpost"
 
 # Authentification token
+# choose something better than this
 token="simple_string"
 
 # Temperature
 # only one is needed and default is Fahrenheit
 Fahenheit=true
-Celsius=false
+# Celsius=true
 
 # debugging output (for testing)
 debug=false

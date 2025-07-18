@@ -1,11 +1,11 @@
 [Unit]
-Description=Owlogger web server
+Description=OWLogger web server
 After=network.target caddy.service
 Requires=caddy.service
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /usr/local/lib/owlogger/owlogger.py -f /var/lib/owlogger/logger_data.db -s http://localhost:18001 
+ExecStart=/usr/bin/python3 /usr/local/lib/owlogger/owlogger.py 
 WorkingDirectory=/usr/local/lib/owlogger
 Restart=on-failure
 User=www-data
