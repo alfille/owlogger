@@ -14,6 +14,10 @@ cp owlogger.py        /usr/local/lib/owlogger
 cp air-datepicker.js  /usr/local/lib/owlogger
 cp air-datepicker.css /usr/local/lib/owlogger
 
+# configuration
+mkdir -p              /etc/owlogger
+cp owlogger.toml      /etc/owlogger
+
 # database location
 mkdir -p  /var/lib/owlogger
 chown -R www-data:www-data /var/lib/owlogger
