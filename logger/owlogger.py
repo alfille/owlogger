@@ -194,8 +194,15 @@ class OWLogServer(BaseHTTPRequestHandler):
             </head>
             <body>
                 <div id='all'>
-                    <div id="space"><span>owlogger</span><a href="#" onclick="globalThis.Today()">Today</a><a href="https://alfille.github.io/owlogger/" target="_blank" rel="noopener noreferrer">Help</a></div>
-                    <div id="crowd"><button id='Ucal' onclick="globalThis.dp.show()"> &#128467;</button><input id='new_cal' type="text" size="10" readonly></div>                    
+                    <div id="space">
+                        <span>owlogger</span>
+                        <a href="#" onclick="globalThis.Today()">Today</a>
+                        <a href="https://alfille.github.io/owlogger/" target="_blank" rel="noopener noreferrer">Help</a>
+                    </div>
+                    <div id="crowd">
+                        <button id='Ucal' onclick="globalThis.dp.show()"> &#128467;</button>
+                        <input id='new_cal' type="text" size="10" readonly>
+                    </div>                    
                     <hr>
                     <div id='scroll'>
                         <table>
@@ -413,7 +420,7 @@ class Database:
 # for setting password -- separat program flow
 def set_password( db, username, password ):
     db.set_password( username, bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8') )
-
+    
 def main(sysargs):
     
     # Look for a config file location (else default) 
@@ -436,12 +443,13 @@ def main(sysargs):
         help=f"Location of any configuration file. Optional default={config}"
         )
     args, remaining_argv = parser.parse_known_args()
-
+    print("test","config" in args)
+    
     # Process TOML
     # TOML file
     if "config" in args:
         try:
-            with open( initial_args.config, "rb" ) as c:
+            with open( args.config, "rb" ) as c:
                 contents = c.readlines()
                 try:
                     toml=tomllib.loads(contents)
@@ -515,7 +523,6 @@ def main(sysargs):
         )
         
     args=parser.parse_args(remaining_argv)
-    print("args",args)
     
     # TOML file
     if "config" in args:
@@ -536,7 +543,10 @@ def main(sysargs):
         OWLogServer.debug = True
 
     #JWT token
-    OWLogServer.token = args.get("token",None)
+    if "token" in args:
+        OWLogServer.token = args.token
+    else:
+        OWLogServer.token = None
         
     OWLogServer.no_password = args.no_password
 

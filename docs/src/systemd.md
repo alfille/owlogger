@@ -38,9 +38,13 @@ More information on [Debian](https://wiki.debian.org/systemd)
 
 systemd files installed by default. No changes should be needed.
 
+---
+
 ## [caddy](./reverse-proxy.md) reverse-proxy
 
 systemd files installed by default. No changes should be needed.
+
+---
 
 ## [owserver 1-wire server](./owserver.md)
 
@@ -88,17 +92,18 @@ ExecStart=/usr/bin/python3 /usr/local/bin/owpost.py
 
 ---
 
+## [owserver](./owserver.md)
+
 1. configure owserver
 2. start owserver
    
   * `systemctl enable owserver`
   * `systemctl start owserver`
   * `systemctl status owserver`
-3. check owpost.toml file
-4. start owpost
-  * `systemctl enable owpost`
-  * `systemctl start owpost`
-  * `systemctl status owpost`
+3. MAke sure owpost.toml file matches owserver configuration
+
+---
+
 
 ## [owlogger](./owlogger.md)
 
@@ -130,7 +135,7 @@ WantedBy=multi-user.target
 
 1. [set up caddy](./reverse-proxy.md)
 2. check owlogger.toml file
-3. start owlooger
+3. start owlogger
   * `systemctl enable owlogger`
   * `systemctl start owlogger`
   * `systemctl status owlogger`
