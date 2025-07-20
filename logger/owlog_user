@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# Script to start owlog_user
+
+pushd /var/lib/owlogger
+
+/usr/bin/python3 /usr/local/lib/owlogger/owlog_user.py "$@"
+
+popd
