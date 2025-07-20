@@ -421,6 +421,23 @@ class Database:
 def set_password( db, username, password ):
     db.set_password( username, bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8') )
     
+def read_toml( args ):
+    if "config" in args:
+        try:
+            with open( args.config, "rb" ) as c:
+                toml = tomllib.load(c)
+        except tomllib.TOMLDecodeError as e:
+            with open ( args.config, "rb" ) as c:
+                contents = c.read()
+            for lin in zip(range(1,200),contents.decode('utf-8').split("\n")):
+                print(f"{lin[0]:3d}. {lin[1]}")
+            print(f"Trouble reading configuration file {args.config}: {e}")
+            sys.exit(1)
+        except Exception as e:
+            print(f"Cannot open TOML configuration file: {args.config}")
+            toml={}
+    return toml
+
 def main(sysargs):
     
     # Look for a config file location (else default) 
@@ -443,25 +460,10 @@ def main(sysargs):
         help=f"Location of any configuration file. Optional default={config}"
         )
     args, remaining_argv = parser.parse_known_args()
-    print("test","config" in args)
     
     # Process TOML
     # TOML file
-    if "config" in args:
-        try:
-            with open( args.config, "rb" ) as c:
-                contents = c.readlines()
-                try:
-                    toml=tomllib.loads(contents)
-                except TOMLDecodeError as e:
-                    for lin in zip(range(1,200),contents.split("\n")):
-                        print(f"{lin[0]:3d}. {lin[1]}")
-                    print(f"Trouble reading configuration file {args.config}: {e.msg}")
-                    sys.exit(1)
-        except Exception as e:
-            print(f"Cannot open TOML configuration file: {args.config}")
-            toml={}
-
+    toml = read_toml( args )
 
     # Second pass at command line
     parser = argparse.ArgumentParser(
@@ -523,19 +525,6 @@ def main(sysargs):
         )
         
     args=parser.parse_args(remaining_argv)
-    
-    # TOML file
-    if "config" in args:
-        try:
-            with open( args.config, "rb" ) as c:
-                try:
-                    toml=tomllib.load(c)
-                except TOMLDecodeError as e:
-                    print(f"Trouble reading configuration file {args.config}: {e.msg}")
-                    sys.exit(1)
-        except Exception as e:
-            print(f"Cannot open TOML configuration file: {args.config}")
-            toml={}
     
     if args.debug:
         print("Debugging output on")
