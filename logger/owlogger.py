@@ -179,8 +179,9 @@ class OWLogServer(BaseHTTPRequestHandler):
                 <title>Logger</title>
                 <style>
                     body {{overflow:hidden; font-size:2em;}}
+                    #reload {{ background-color:blue; color:white; border-radius:8px;}}
                     #all {{width:100%; height:100%;display:flex;flex-direction:column; padding:10px; }}
-                    #space {{display:flex; justify-content:space-between; flex-wrap:nowrap;}}
+                    #space {{display:flex; justify-content:space-between; flex-wrap:nowrap; font-size: 1.2em; border: black dotted 1px;}}
                     #crowd {{display:flex; align-items:center; flex-wrap:nowrap;}}
                     #uCal,input[type='text'] {{ font-size: 2em; }}
                     .present {{background-color: #e6ffe6;}}
@@ -195,7 +196,7 @@ class OWLogServer(BaseHTTPRequestHandler):
             <body>
                 <div id='all'>
                     <div id="space">
-                        <span>owlogger</span>
+                        <button id="reload" onclick="globalThis.Reload()">OWLogger</button>
                         <a href="#" onclick="globalThis.Today()">Today</a>
                         <a href="https://alfille.github.io/owlogger/" target="_blank" rel="noopener noreferrer">Help</a>
                     </div>
@@ -210,7 +211,7 @@ class OWLogServer(BaseHTTPRequestHandler):
                             {table_data}
                         </table>
                         <hr>
-                        <a href="https://github.com/alfille/logger" target="_blank" rel="noopener noreferrer">Logger by Paul H Alfille 2025</a>
+                        <a href="https://github.com/alfille/owlogger" target="_blank" rel="noopener noreferrer">OWLogger by Paul H Alfille 2025</a>
                     </div>
                 </div>
             </body>
@@ -244,7 +245,10 @@ class OWLogServer(BaseHTTPRequestHandler):
                     }}
                 function Today() {{ 
                     NewDate(new Date()); 
-                    }} 
+                    }}
+                function Reload() {{
+                    window.location.reload();
+                    }}
                 function NewDate(date) {{
                     const d = date.toISOString().split("T")[0];
                     const url = new URL(location.href);
