@@ -9,12 +9,13 @@
 # by Paul H Alfille 2025
 # MIT License
 
-import sqlite3
 
-import sys
 import argparse
 import base64
 import getpass
+import tomllib
+import sqlite3
+import sys
 
 # for encryption
 try:
