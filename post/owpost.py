@@ -8,10 +8,11 @@
 
 # Example from https://pytutorial.com/python-requestsput-complete-guide-for-http-put-requests/
 
-from requests import put as send_put
+from requests import put as send_put, post as send_post
 import json
 import datetime
 import argparse
+import tomllib
 import sys
 import math
 import time
@@ -37,9 +38,9 @@ def post( server, data, headers ):
         response = send_post( server, data, headers )
         global debug
         if debug:
-            print( f"Return code={response.status_code} ({response.reason}) from {response.url}")
+            print( f"Return code={response.status_code} ({response.reason}) from {response.url}, tried {server}")
     except:
-        print( datetime.datetime.now(), data ) 
+        print( f"{datetime.datetime.now()}, {data} to {server}" ) 
 
 def read_toml( args ):
     if "config" in args:

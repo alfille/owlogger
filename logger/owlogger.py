@@ -50,15 +50,15 @@ except:
     
 class OWLogServer(BaseHTTPRequestHandler):
     # class variables
-    debug = False
     token = None
     db = None
     no_password = False
     
     def do_GET(self):
+        global debug
                         
         # Respond to web request
-        if self.debug:
+        if debug:
             print(f"PATH <{self.path}>")
 
         # test for file request
@@ -91,7 +91,7 @@ class OWLogServer(BaseHTTPRequestHandler):
         except:
             u = ({})
 
-        if self.debug:
+        if debug:
             print("GET ",u)
 
         # parse url for date if present
@@ -112,6 +112,11 @@ class OWLogServer(BaseHTTPRequestHandler):
         self.wfile.write( bytes(self._make_html( daystart), "utf-8") )
 
     def do_POST(self):
+        global debug
+        
+        if debug:
+            print("Transmission attempt")
+
         # Is JWT enabled in owlogger? (enabled by token in command line)
         if self.token:
             # get token
@@ -132,15 +137,17 @@ class OWLogServer(BaseHTTPRequestHandler):
 #        self.send_response(200)
 #        self.end_headers()
         self._good_get()
-        if self.debug:
+        if debug:
             print("POST ",body)
         self.db.add( body['data'])
         
     def _bad_post( self, message ):
+        global debug
+        
         self.send_response(401)
         self.end_headers()
         self.wfile.write(message.encode('utf-8'))
-        if self.debug:
+        if debug:
             print(message)
             
     def _good_get( self ):
@@ -159,6 +166,8 @@ class OWLogServer(BaseHTTPRequestHandler):
             )
         if len(table_data)==0:
             table_data = "<tr><td colspan=2>&nbsp;&nbsp;No entries&nbsp;&nbsp;</td></tr>"
+        
+        print("data",self.db.day_data( daystart ))
 
         # Get days with data
         dDays =  [ d[0] for d in self.db.distinct_days( daystart )]
@@ -353,8 +362,10 @@ class Database:
                 ;""", ( username, password_hash ), False )
 
     def add( self, value ):
+        global debug
+        
         # Add a record
-        if self.debug:
+        if debug:
             print( f"Adding _{value}" )
         self.command( """INSERT INTO datalog( value ) VALUES (?) """, ( value, ) )
 
@@ -530,14 +541,18 @@ def main(sysargs):
         
     args=parser.parse_args(remaining_argv)
     
+    global debug
     if args.debug:
         print("Debugging output on")
         print(sysargs,args)
-        OWLogServer.debug = True
+        debug = True
+    else:
+        debug = false
 
     #JWT token
     if "token" in args:
         OWLogServer.token = args.token
+        print("token",args.token)
     else:
         OWLogServer.token = None
         
