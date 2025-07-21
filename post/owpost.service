@@ -9,3 +9,4 @@ Type=oneshot
 ExecStart=/usr/bin/python3 /usr/local/bin/owpost.py
 # If no configuration file
 # ExecStart=/usr/bin/python3 /usr/local/bin/owpost.py -o localhost:3504 -s https://remote.host:8001
+ExecStart=/usr/bin/python3 /usr/local/bin/owpost.py

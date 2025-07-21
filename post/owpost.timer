@@ -1,5 +1,5 @@
 [Unit]
-Description=Run owpost periotically to send data to owlogger
+Description=Run owpost periodically to send data to owlogger
 
 [Timer]
 OnBootSec=3min

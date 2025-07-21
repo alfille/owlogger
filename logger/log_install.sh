@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# File for setting up logger version os owlogger
+# Script for setting up external server component of owlogger
 # must be run as root (e.g. sudo)
 
 # Check if the script is run as root
@@ -7,6 +7,11 @@ if [[ "$EUID" -ne 0 ]]; then
   echo "❌ This script must be run as root. Try using sudo."
   exit 1
 fi
+
+# Debian/Ubuntu Specific
+# apt update
+# apt upgrade
+# apt install python3 python3-jwt python3-bcrypt git ufw caddy
 
 # Logger program
 mkdir -p              /usr/local/lib/owlogger

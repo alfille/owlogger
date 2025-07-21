@@ -1,5 +1,7 @@
 # File locations
 
+# Cloud server
+
 ## Database
 
 ```
@@ -13,6 +15,9 @@
 /usr/local/lib/owlogger/air-datepicker.js
 /usr/local/lib/owlogger/air-datepicker.css
 /usr/local/lib/owlogger/owlog_user.py
+
+/usr/bin/owlogger
+/usr/bin/owlog_user
 ```
 
 ## Configuration
@@ -24,7 +29,7 @@
 ## systemd files
 
 ```
-/etc/systemd/system/owlogger.server
+/etc/systemd/system/owlogger.service
 /etc/systemd/system/owlogger.timer
 ```
 
@@ -41,11 +46,51 @@
 /etc/ufw/user6.rules
 ```
 
-## Repository
-Depends on where git was run, but assuming you are root, in the `/root` diurectory:
+## Repository copy
+Depends on where git was run, but assuming you are root, in the `/root` directory:
 
 ```
 /root/owlogger
-# Installation script
+```
+
+## Installation script
+```
 /root/owlogger/logger/log_install.sh
 ```
+
+# Sensor transmitter
+
+## Program
+
+```
+/usr/local/lib/owlogger/owpost.py
+/usr/bin/owserver
+```
+
+## Configuration
+
+```
+/etc/owlogger/owpost.toml
+/etc/owfs.conf
+```
+
+## systemd files
+
+```
+/etc/systemd/system/owlogger.service
+/etc/systemd/system/owserver.service
+```
+## Repository copy
+Depends on where git was run, but assuming you are root, in the `/root` directory:
+
+```
+/root/owlogger
+```
+## Installation script
+```
+/root/owlogger/post/log_install.sh
+```
+
+
+
+

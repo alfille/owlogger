@@ -1,0 +1,4 @@
+#!/bin/bash
+# Script to start owpost
+
+/usr/bin/python3 /usr/local/lib/owlogger/owpost.py "$@"

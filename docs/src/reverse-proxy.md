@@ -50,3 +50,8 @@ So Caddy serves as a protective intermediary, requiring all external access to o
 
 ### Installation
 
+```
+apt install caddy
+```
+
+More complete instructions at [caddy website](https://caddyserver.com/docs/install)
