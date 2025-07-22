@@ -139,7 +139,7 @@ class OWLogServer(BaseHTTPRequestHandler):
         self._good_get()
         if debug:
             print("POST ",body)
-        self.db.add( body['data'])
+        self.db.add( body['name'], body['data'] )
         
     def _bad_post( self, message ):
         global debug
@@ -168,6 +168,7 @@ class OWLogServer(BaseHTTPRequestHandler):
             table_data = "<tr><td colspan=2>&nbsp;&nbsp;No entries&nbsp;&nbsp;</td></tr>"
         
         print("data",self.db.day_data( daystart ))
+        print("json",json.dumps(self.db.day_data( daystart )))
 
         # Get days with data
         dDays =  [ d[0] for d in self.db.distinct_days( daystart )]
@@ -317,7 +318,8 @@ class Database:
         self.command(
             """CREATE TABLE IF NOT EXISTS datalog (
                 id INTEGER PRIMARY KEY, 
-                date DATATIME DEFAULT CURRENT_TIMESTAMP, 
+                date DATATIME DEFAULT CURRENT_TIMESTAMP,
+                source TEXT DEFAULT '',
                 value TEXT
             );""" )
         self.command(
@@ -361,18 +363,18 @@ class Database:
                     password_hash = excluded.password_hash
                 ;""", ( username, password_hash ), False )
 
-    def add( self, value ):
+    def add( self, source, value ):
         global debug
         
         # Add a record
         if debug:
             print( f"Adding _{value}" )
-        self.command( """INSERT INTO datalog( value ) VALUES (?) """, ( value, ) )
+        self.command( """INSERT INTO datalog( source, value ) VALUES (?,?) """, ( source, value, ) )
 
     def day_data( self, day ):
         # Get records from a full day
         nextday = day + datetime.timedelta(days=1)
-        records = self.command( """SELECT TIME(date) as t, value FROM datalog WHERE DATE(date) BETWEEN DATE(?) AND DATE(?) ORDER BY t""", (day.isoformat(),nextday.isoformat()), True )
+        records = self.command( """SELECT TIME(date) as t, source, value FROM datalog WHERE DATE(date) BETWEEN DATE(?) AND DATE(?) ORDER BY t""", (day.isoformat(),nextday.isoformat()), True )
         #print(records)
         return records
         

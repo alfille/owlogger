@@ -28,21 +28,30 @@ except:
     print("either 'pip install PyJWT' or 'apt install python3-jwt'")
     sys.exit(1)
 
-def upload( server, secret, data_string ):
-    data = json.dumps( {'data': data_string } )
-    if secret==None:
-        post( server, data, { "Content-Type": "application/text"} )
-    else:
-        post( server, data, { 'Authorization': f'Bearer {secret}', 'Content-Type': 'application/text'} )
+class Transmit:
+    def __init__(self, server, name, token):
+        self.server = server
+        self.name = name
+        
+        # JWT token?
+        if token == None:
+            self.header = { "Content-Type": "application/text"}
+        else:
+            secret = jwt.encode( {'name':self.name},args.token,algorithm='HS256')
+            self.header = { 'Authorization': f'Bearer {secret}', 'Content-Type': 'application/text'}
+            
+    def upload( self, data_string ):
+        data = json.dumps( {'data': data_string, 'name':self.name } )
+        self.post( data )
 
-def post( server, data, headers ): 
-    try:
-        response = send_post( server, data=data, headers=headers )
-        global debug
-        if debug:
-            print( f"Return code={response.status_code} ({response.reason}) from {response.url}, tried {server}")
-    except Exception as e:
-        print( f"{datetime.datetime.now()}, {data} to {server} Error: {e}" ) 
+    def post( self, data ): 
+        try:
+            response = send_post( self.server, data=data, headers=self.headers )
+            global debug
+            if debug:
+                print( f"Return code={response.status_code} ({response.reason}) from {response.url}, tried {self.server}")
+        except Exception as e:
+            print( f"{datetime.datetime.now()}, {data} to {self.server} Error: {e}" ) 
 
 def read_toml( args ):
     if "config" in args:
@@ -196,28 +205,25 @@ def main(sysargs):
                 
     args=parser.parse_args()
 
-    #JWT token
-    if "token" in args:
-        secret = jwt.encode( {'name':args.name},args.token,algorithm='HS256')
-    else:
-        secret=None
-
     #server
-    # Take server string as is. Can be http, https or anything that the reverse proxy can manage (perhaps a branch)
-    server = args.server
-
     # debug
     global debug
     debug = args.debug
     if debug:
         print("Debugging on")
         
+    # Server (external data collector)
+    # Take server string as is. Can be http, https or anything that the reverse proxy can manage (perhaps a branch)
+    if "token" in args:
+        server = Transmit( args.server, args.name, args.token )
+    else:
+        server = Transmit( args.server, args.name, None )
+
     # temperature flag
     if args.Celsius or not args.Fahrenheit:
         temp_scale=protocol.FLG_TEMP_C
     else:
         temp_scale=protocol.FLG_TEMP_F
-
 
     #
     # create owserver proxy object
@@ -267,9 +273,9 @@ def main(sysargs):
         # Hdevices = devs_with_humidity() -- future
         
         if no_data:
-            upload( server, secret, "no data" )
+            server.upload( "no data" )
         else:
-            upload( server, secret, " ".join([temperature_string]) )
+            server.upload( " ".join([temperature_string]) )
 
         if period==None:
             # single shot
