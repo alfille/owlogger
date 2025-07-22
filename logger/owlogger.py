@@ -432,7 +432,7 @@ class Database:
         #print("SQL ",records)
         return records
         
-# for setting password -- separat program flow
+# for setting password -- separate program flow
 def set_password( db, username, password ):
     db.set_password( username, bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8') )
     
@@ -452,6 +452,27 @@ def read_toml( args ):
             print(f"Cannot open TOML configuration file: {args.config}")
             toml={}
     return toml
+
+def server_tuple( server_string, default_port ):
+    # takes a server string in a variety of formats and returns the bare needed components
+    
+    # Handle server address
+    server = server_string
+    
+    # Add http:// for url processing even though it's not poart of the final result
+    if server.find("//") == -1:
+        server = f"http://{server}"
+    
+    # url parse and extract port
+    u = urllib.parse.urlparse(server)
+    port = u.port
+    if port==None:
+        port = default_port
+        
+    # netloc can include port, so remove 
+    netloc = u.netloc.split(':')[0]
+    
+    return netloc, port
 
 def main(sysargs):
     
@@ -547,7 +568,7 @@ def main(sysargs):
         print(sysargs,args)
         debug = True
     else:
-        debug = false
+        debug = False
 
     #JWT token
     if "token" in args:
@@ -558,18 +579,9 @@ def main(sysargs):
     OWLogServer.no_password = args.no_password
 
     # Handle server address
-    server = args.server
-    if server.find("//") == -1:
-        server = f"http://{server}"
-    
-    u = urllib.parse.urlparse(server)
-    port = u.port
-    if port==None:
-        port = default_port
-        
-    nl = u.netloc.split(':')[0]
-    webServer = HTTPServer((nl, port), OWLogServer)
-    print(f"Server started {nl}:{port}")
+    (addr,port) = server_tuple( args.server, default_port )
+    webServer = HTTPServer((addr, port), OWLogServer)
+    print(f"Server started {addr}:{port}")
 
     OWLogServer.db = Database(args.database)
 

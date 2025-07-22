@@ -12,11 +12,13 @@ from requests import put as send_put, post as send_post
 import json
 import datetime
 import argparse
-import tomllib
-import sys
 import math
-import time
 from pyownet import protocol
+import sys
+import time
+import tomllib
+import urllib
+from urllib.parse import urlparse
 
 # for authentification
 try:
@@ -58,6 +60,27 @@ def read_toml( args ):
             print(f"Cannot open TOML configuration file: {args.config} Error: {e}")
             toml={}
     return toml
+
+def server_tuple( server_string, default_port ):
+    # takes a server string in a variety of formats and returns the bare needed components
+    
+    # Handle server address
+    server = server_string
+    
+    # Add http:// for url processing even though it's not poart of the final result
+    if server.find("//") == -1:
+        server = f"http://{server}"
+    
+    # url parse and extract port
+    u = urllib.parse.urlparse(server)
+    port = u.port
+    if port==None:
+        port = default_port
+        
+    # netloc can include port, so remove 
+    netloc = u.netloc.split(':')[0]
+    
+    return netloc, port
 
 def main(sysargs):
     # Look for a config file location (else default) 
@@ -180,6 +203,7 @@ def main(sysargs):
         secret=None
 
     #server
+    # Take server string as is. Can be http, https or anything that the reverse proxy can manage (perhaps a branch)
     server = args.server
 
     # debug
@@ -187,36 +211,28 @@ def main(sysargs):
     debug = args.debug
     if debug:
         print("Debugging on")
-
-    #owserver
-    if args.owserver.find("//")==-1:
-        owserver = args.owserver
-    else:
-        owserver = args.owserver.split("//")[1]
-    if owserver.find(":")==-1:
-        owserver_host = owserver
-        owserver_port = default_owport
-    else:
-        (owserver_host, owserver_port) = owserver.split(":")
-
+        
+    # temperature flag
     if args.Celsius or not args.Fahrenheit:
         temp_scale=protocol.FLG_TEMP_C
     else:
         temp_scale=protocol.FLG_TEMP_F
 
+
     #
     # create owserver proxy object
     #
+    (owaddr,owport) = server_tuple( args.owserver, default_owport )
     try:
         owproxy = protocol.proxy(
-            owserver_host, owserver_port, 
+            owaddr, owport, 
             flags=temp_scale,
             verbose=args.debug, )
     except protocol.ConnError as error:
-        print(f"Unable to open connection to '{owserver_host}:{owserver_port} Error: {error}")
+        print(f"Unable to open connection to '{owaddr}:{owport} Error: {error}")
         sys.exit(1)
     except protocol.ProtocolError as error:
-        print("'{owserver_host}:{owserver_port}' not an owserver? Protocol Error: {error}")
+        print("'{owaddr}:{owport}' not an owserver? Protocol Error: {error}")
         sys.exit(1)
 
     #period
