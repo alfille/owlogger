@@ -114,23 +114,23 @@ class OWLogServer(BaseHTTPRequestHandler):
     def do_POST(self):
         global debug
         
-        if debug:
-            print("Transmission attempt")
-
         # Is JWT enabled in owlogger? (enabled by token in command line)
         if self.token:
             # get token
+            #print("self.headers",self.headers)
             auth_header = self.headers.get('Authorization')
-            if not auth_header or not authheader.startswith('Bearer'):
+            #print("auth_header",auth_header)
+            if not auth_header or not auth_header.startswith('Bearer'):
                 return self._bad_post("Token missing")
             # test token
-            h_token = authheader.split(' ')[1]
+            h_token = auth_header.split(' ')[1]
             try:
-                jwt.decode( h_token, token, algorithms=['HS256'])
+                jwt.decode( h_token, self.token, algorithms=['HS256'])
             except jwt.ExpiredSignatureError:
                 return self._bad_post("Token expired")
             except jwt.InvalidTokenError:
                 return self._bad_post( "Token invalid")
+
         content_length = int(self.headers['Content-Length'])
         body_str = self.rfile.read(content_length)
         body = json.loads(body_str)
@@ -552,27 +552,24 @@ def main(sysargs):
     #JWT token
     if "token" in args:
         OWLogServer.token = args.token
-        print("token",args.token)
     else:
         OWLogServer.token = None
         
     OWLogServer.no_password = args.no_password
 
     # Handle server address
-    if args.server.find('//')==-1:
-        server = '//'.join(['http:',args.server])
-    else:
-        server = args.server
-    print("server",server)
+    server = args.server
+    if server.find("//") == -1:
+        server = f"http://{server}"
     
     u = urllib.parse.urlparse(server)
-    print(u)
     port = u.port
     if port==None:
         port = default_port
         
-    webServer = HTTPServer((u.hostname, port), OWLogServer)
-    print("Server started %s:%s" % (u.hostname, port))
+    nl = u.netloc.split(':')[0]
+    webServer = HTTPServer((nl, port), OWLogServer)
+    print(f"Server started {nl}:{port}")
 
     OWLogServer.db = Database(args.database)
 

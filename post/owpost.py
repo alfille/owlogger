@@ -35,12 +35,12 @@ def upload( server, secret, data_string ):
 
 def post( server, data, headers ): 
     try:
-        response = send_post( server, data, headers )
+        response = send_post( server, data=data, headers=headers )
         global debug
         if debug:
             print( f"Return code={response.status_code} ({response.reason}) from {response.url}, tried {server}")
-    except:
-        print( f"{datetime.datetime.now()}, {data} to {server}" ) 
+    except Exception as e:
+        print( f"{datetime.datetime.now()}, {data} to {server} Error: {e}" ) 
 
 def read_toml( args ):
     if "config" in args:
@@ -52,10 +52,10 @@ def read_toml( args ):
                 contents = c.read()
             for lin in zip(range(1,200),contents.decode('utf-8').split("\n")):
                 print(f"{lin[0]:3d}. {lin[1]}")
-            print(f"Trouble reading configuration file {args.config}: {e}")
+            print(f"Trouble reading configuration file {args.config} Error: {e}")
             sys.exit(1)
         except Exception as e:
-            print(f"Cannot open TOML configuration file: {args.config}")
+            print(f"Cannot open TOML configuration file: {args.config} Error: {e}")
             toml={}
     return toml
 
@@ -175,7 +175,7 @@ def main(sysargs):
 
     #JWT token
     if "token" in args:
-            secret = jwt.encode( {'name':args.name},args.token,algorithm='HS256')
+        secret = jwt.encode( {'name':args.name},args.token,algorithm='HS256')
     else:
         secret=None
 
@@ -213,10 +213,10 @@ def main(sysargs):
             flags=temp_scale,
             verbose=args.debug, )
     except protocol.ConnError as error:
-        print(f"Unable to open connection to '{owserver_host}:{owserver_port}'\nSystem error: {error}", file=sys.stderr)
+        print(f"Unable to open connection to '{owserver_host}:{owserver_port} Error: {error}")
         sys.exit(1)
     except protocol.ProtocolError as error:
-        print("'{owserver_host}:{owserver_port}' not an owserver?\nProtocol error: {error}", file=sys.stderr)
+        print("'{owserver_host}:{owserver_port}' not an owserver? Protocol Error: {error}")
         sys.exit(1)
 
     #period
@@ -234,8 +234,8 @@ def main(sysargs):
         temperatures = []
         try:
             owdir = owproxy.dir(slash=False, bus=False)
-        except protocol.OwnetError:
-            print( "Cannot read owserver" )
+        except protocol.OwnetError as e:
+            print( "Cannot read owserver Error: {e}" )
             owdir = []
         for sensor in owdir:
             #stype = owproxy.read(sensor + '/type').decode()
