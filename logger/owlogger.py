@@ -176,130 +176,132 @@ class OWLogServer(BaseHTTPRequestHandler):
 
         # Generate HTML
         return f"""
-        <html>
-            <head>
-                <title>Logger</title>
-                <style>
-                    body {{overflow:hidden; font-size:2em;}}
-                    #reload {{ background-color:blue; color:white; border-radius:8px;}}
-                    #all {{width:100%; height:100%;display:flex;flex-direction:column; padding:10px; }}
-                    #space {{display:flex; justify-content:space-between; flex-wrap:nowrap; font-size: 1.2em; border: black dotted 1px;}}
-                    #crowd {{display:flex; align-items:center; flex-wrap:nowrap;}}
-                    #uCal,input[type='text'] {{ font-size: 2em; }}
-                    .present {{background-color: #e6ffe6;}}
-                    #scroll {{overflow:scroll;}}
-                    table {{ border-collapse: collapse;font-size:1em; }}
-                    tr:nth-child(even) {{background-color: #D6EEEE; border-bottom: 1px solid #ddd; }}
-                    td {{ padding-left: 1em; padding-right: 1em; }}
-                </style>
-                <link href="./air-datepicker.css" rel="stylesheet">
-                <script src="./air-datepicker.js"></script>
-            </head>
-            <body>
-                <div id='all'>
-                    <div id="space">
-                        <button id="reload" onclick="globalThis.Reload()">OWLogger</button>
-                        <a href="#" onclick="globalThis.Today()">Today</a>
-                        <a href="https://alfille.github.io/owlogger/" target="_blank" rel="noopener noreferrer">Help</a>
-                    </div>
-                    <div id="crowd">
-                        <button id='Ucal' onclick="globalThis.dp.show()"> &#128467;</button>
-                        <input id='new_cal' type="text" size="10" readonly>
-                    </div>                    
-                    <hr>
-                    <div id='scroll'>
-                        <table id="table"></table>
-                        <hr>
-                        <a href="https://github.com/alfille/owlogger" target="_blank" rel="noopener noreferrer">OWLogger by Paul H Alfille 2025</a>
-                    </div>
-                </div>
-            </body>
-            <script>
-                var dayData = [];
-                window.onload = () => {{
-                    
-                    const d = new Date("{daystart}")
-                    
-                    dayData = JSON.parse('{dData}');
-                    const goodDays={dDays};
-                    const goodMonths={mDays};
-                    const goodYears={yDays};
+<html>
+    <head>
+        <title>Logger</title>
+        <style>
+            body {{overflow:hidden; font-size:2em;}}
+            #reload {{ background-color:blue; color:white; border-radius:8px;}}
+            #all {{width:100%; height:100%;display:flex;flex-direction:column; padding:10px; }}
+            #space {{display:flex; justify-content:space-between; flex-wrap:nowrap; font-size: 1.2em; border: black dotted 1px;}}
+            #crowd {{display:flex; align-items:center; flex-wrap:nowrap;}}
+            #uCal,input[type='text'] {{ font-size: 2em; }}
+            .present {{background-color: #e6ffe6;}}
+            #scroll {{overflow-y:auto;position:relative;}}
+            table {{ border-collapse: collapse;font-size:1em; width:100%; }}
+            thead {{position:sticky;top:0;background-color:white;}}
+            tr:nth-child(even) {{background-color: #D6EEEE; border-bottom: 1px solid #ddd; }}
+            td {{ padding-left: 1em; padding-right: 1em; }}
+        </style>
+        <link href="./air-datepicker.css" rel="stylesheet">
+        <script src="./air-datepicker.js"></script>
+    </head>
+    <body>
+        <div id='all'>
+            <div id="space">
+                <button id="reload" onclick="globalThis.Reload()">OWLogger</button>
+                <a href="#" onclick="globalThis.Today()">Today</a>
+                <a href="https://alfille.github.io/owlogger/" target="_blank" rel="noopener noreferrer">Help</a>
+            </div>
+            <div id="crowd">
+                <button id='Ucal' onclick="globalThis.dp.show()"> &#128467;</button>
+                <input id='new_cal' type="text" size="10" readonly>
+            </div>                    
+            <hr>
+            <div id='scroll'>
+                <table id="table"></table>
+                <hr>
+                <a href="https://github.com/alfille/owlogger" target="_blank" rel="noopener noreferrer">OWLogger by Paul H Alfille 2025</a>
+            </div>
+        </div>
+    </body>
+    <script>
+        var dayData = [];
+        window.onload = () => {{
+            
+            const d = new Date("{daystart}")
+            
+            dayData = JSON.parse('{dData}');
+            const goodDays={dDays};
+            const goodMonths={mDays};
+            const goodYears={yDays};
 
-                    function TestDate(x) {{
-                        switch (x.cellType) {{
-                            case 'day':
-                                return goodDays.includes(x.date.toISOString().split("T")[0]);
-                            case 'month':
-                                return goodMonths.includes(x.date.toISOString().split("T")[0]);
-                            case 'year':
-                                return goodYears.includes(x.date.toISOString().split("T")[0]);
-                            default:
-                                return false;
-                            }}
-                        }}
+            function TestDate(x) {{
+                switch (x.cellType) {{
+                    case 'day':
+                        return goodDays.includes(x.date.toISOString().split("T")[0]);
+                    case 'month':
+                        return goodMonths.includes(x.date.toISOString().split("T")[0]);
+                    case 'year':
+                        return goodYears.includes(x.date.toISOString().split("T")[0]);
+                    default:
+                        return false;
+                    }}
+                }}
 
-                    globalThis.dp = new AirDatepicker("#new_cal", {{
-                            onSelect(x) {{NewDate(x.date)}},
-                            isMobile:true,
-                            selectedDates:[d],
-                            onRenderCell(x) {{ if (TestDate(x)) {{ return {{classes:'present'}};}} }},
-                        }} ) ;
-                    SortOn();
-                    }}
-                function Today() {{ 
-                    NewDate(new Date()); 
-                    }}
-                function Reload() {{
-                    window.location.reload();
-                    }}
-                function NewDate(date) {{
-                    const d = date.toISOString().split("T")[0];
-                    const url = new URL(location.href);
-                    url.searchParams.set('date', d);
+            globalThis.dp = new AirDatepicker("#new_cal", {{
+                    onSelect(x) {{NewDate(x.date)}},
+                    isMobile:true,
+                    selectedDates:[d],
+                    onRenderCell(x) {{ if (TestDate(x)) {{ return {{classes:'present'}};}} }},
+                }} ) ;
+            SortOn();
+            }}
+        function Today() {{ 
+            NewDate(new Date()); 
+            }}
+        function Reload() {{
+            window.location.reload();
+            }}
+        function NewDate(date) {{
+            const d = date.toISOString().split("T")[0];
+            const url = new URL(location.href);
+            url.searchParams.set('date', d);
 
-                    location.assign(url.search);
+            location.assign(url.search);
+            }}
+        function CreateTable() {{
+            const table = document.getElementById("table");
+            table.innerHTML="";
+            const sym=(i,s0,s1)=>{{
+                if (i!=s0){{return "&nbsp";}}
+                if ( s1>0){{return "&uarr;";}}
+                return "&darr;";}}
+            sortorder = JSON.parse(sessionStorage.getItem("sortorder"));
+            const head = table.createTHead().insertRow(-1);
+            ["Time","Source","Data"].forEach( (h,i) => head.insertCell(-1).innerHTML=`<span onclick="SortOn(${{i}})"><B>${{h}}&nbsp;${{sym(i,sortorder[0],sortorder[1])}}<\B></span>` );
+            const body = table.createTBody();
+            dayData.forEach( r => AddRow( body, r ) );
+            }}                    
+        function AddRow( table, row_data ) {{
+            const row = table.insertRow(-1);
+            row_data.forEach( d => row.insertCell(-1).innerHTML=d );
+            }}
+        function SortOn( column=null ){{
+            const so = sessionStorage.getItem("sortorder");
+            let sortorder = [0,1] ;
+            if ( so != null ) {{
+                sortorder = JSON.parse(so);
+                }}
+            if ( column != null ) {{
+                if ( column==sortorder[0] ) {{
+                    sortorder[1] = -sortorder[1] ;
+                    }} else {{
+                    sortorder = [column, 1];
                     }}
-                function CreateTable() {{
-                    const table = document.getElementById("table");
-                    table.innerHTML="";
-                    const sym=(i,s0,s1)=>{{
-						if (i!=s0){{return "&nbsp";}}
-						if ( s1>0){{return "&uarr;";}}
-						return "&darr;";}}
-					sortorder = JSON.parse(sessionStorage.getItem("sortorder"));
-                    const head = table.createTHead().insertRow(-1);
-                    ["Time","Source","Data"].forEach( (h,i) => head.insertCell(-1).innerHTML=`<span onclick="SortOn(${{i}})"><B>${{h}}&nbsp;${{sym(i,sortorder[0],sortorder[1])}}<\B></span>` );
-                    dayData.forEach( r => AddRow( table, r ) );
-                    }}                    
-                function AddRow( table, row_data ) {{
-                    const row = table.insertRow(-1);
-                    row_data.forEach( d => row.insertCell(-1).innerHTML=d );
-                    }}
-                function SortOn( column=null ){{
-                    const so = sessionStorage.getItem("sortorder");
-                    let sortorder = [0,1] ;
-                    if ( so != null ) {{
-                        sortorder = JSON.parse(so);
-                        }}
-                    if ( column != null ) {{
-                        if ( column==sortorder[0] ) {{
-                            sortorder[1] = -sortorder[1] ;
-                            }} else {{
-                            sortorder = [column, 1];
-                            }}
-                        }}
-                    if ( sortorder[1] > 0 ) {{
-                        dayData.sort( (r1,r2) => r1[sortorder[0]].localeCompare(r2[sortorder[0]]) );
-                        }} else {{
-                        dayData.sort( (r2,r1) => r1[sortorder[0]].localeCompare(r2[sortorder[0]]) );
-                        }}
-                    sessionStorage.setItem("sortorder",JSON.stringify(sortorder));
-                    CreateTable();
-                    }}
-                    
-                    
-            </script>
-        </html>"""
+                }}
+            if ( sortorder[1] > 0 ) {{
+                dayData.sort( (r1,r2) => r1[sortorder[0]].localeCompare(r2[sortorder[0]]) );
+                }} else {{
+                dayData.sort( (r2,r1) => r1[sortorder[0]].localeCompare(r2[sortorder[0]]) );
+                }}
+            sessionStorage.setItem("sortorder",JSON.stringify(sortorder));
+            CreateTable();
+            }}
+            
+            
+    </script>
+</html>"""
         
     def _send_auth_challenge(self):
         """Sends an HTTP 401 Unauthorized response with a Basic Auth challenge."""
