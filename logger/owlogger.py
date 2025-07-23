@@ -160,18 +160,7 @@ class OWLogServer(BaseHTTPRequestHandler):
 
     def _make_html( self, daystart ):
         # Get corresponding database entries for this date
-        table_data = "".join(
-            [ "<tr>"+"".join(["<td>"+c+"</td>" for c in row])+"</tr>"
-                for row in self.db.day_data( daystart ) ]
-            )
-        if len(table_data)==0:
-            table_data = "<tr><td colspan=2>&nbsp;&nbsp;No entries&nbsp;&nbsp;</td></tr>"
-        
-        print("data",self.db.day_data( daystart ))
         dData = json.dumps(self.db.day_data( daystart ))
-        print("dData")
-        print(dData)
-        print("dData")
 
         # Get days with data
         dDays =  [ d[0] for d in self.db.distinct_days( daystart )]
@@ -232,7 +221,6 @@ class OWLogServer(BaseHTTPRequestHandler):
                     const d = new Date("{daystart}")
                     
                     dayData = JSON.parse('{dData}');
-                    console.log(dayData);
                     const goodDays={dDays};
                     const goodMonths={mDays};
                     const goodYears={yDays};
@@ -274,8 +262,13 @@ class OWLogServer(BaseHTTPRequestHandler):
                 function CreateTable() {{
                     const table = document.getElementById("table");
                     table.innerHTML="";
+                    const sym=(i,s0,s1)=>{{
+						if (i!=s0){{return "&nbsp";}}
+						if ( s1>0){{return "&uarr;";}}
+						return "&darr;";}}
+					sortorder = JSON.parse(sessionStorage.getItem("sortorder"));
                     const head = table.createTHead().insertRow(-1);
-                    ["Time","Source","Data"].forEach( (h,i) => head.insertCell(-1).innerHTML=`<span onclick="SortOn(${{i}})"><B>${{h}}<\B></span>` );
+                    ["Time","Source","Data"].forEach( (h,i) => head.insertCell(-1).innerHTML=`<span onclick="SortOn(${{i}})"><B>${{h}}&nbsp;${{sym(i,sortorder[0],sortorder[1])}}<\B></span>` );
                     dayData.forEach( r => AddRow( table, r ) );
                     }}                    
                 function AddRow( table, row_data ) {{
@@ -284,11 +277,9 @@ class OWLogServer(BaseHTTPRequestHandler):
                     }}
                 function SortOn( column=null ){{
                     const so = sessionStorage.getItem("sortorder");
-                    let sortorder = [1,1] ;
-                    console.log(sortorder);
+                    let sortorder = [0,1] ;
                     if ( so != null ) {{
                         sortorder = JSON.parse(so);
-                        console.log(sortorder);
                         }}
                     if ( column != null ) {{
                         if ( column==sortorder[0] ) {{
@@ -296,7 +287,6 @@ class OWLogServer(BaseHTTPRequestHandler):
                             }} else {{
                             sortorder = [column, 1];
                             }}
-                            console.log(sortorder);
                         }}
                     if ( sortorder[1] > 0 ) {{
                         dayData.sort( (r1,r2) => r1[sortorder[0]].localeCompare(r2[sortorder[0]]) );
