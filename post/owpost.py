@@ -35,10 +35,10 @@ class Transmit:
         
         # JWT token?
         if token == None:
-            self.header = { "Content-Type": "application/text"}
+            self.headers = { "Content-Type": "application/text"}
         else:
-            secret = jwt.encode( {'name':self.name},args.token,algorithm='HS256')
-            self.header = { 'Authorization': f'Bearer {secret}', 'Content-Type': 'application/text'}
+            secret = jwt.encode( {'name':self.name},token,algorithm='HS256')
+            self.headers = { 'Authorization': f'Bearer {secret}', 'Content-Type': 'application/text'}
             
     def upload( self, data_string ):
         data = json.dumps( {'data': data_string, 'name':self.name } )

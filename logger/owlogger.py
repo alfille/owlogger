@@ -168,7 +168,10 @@ class OWLogServer(BaseHTTPRequestHandler):
             table_data = "<tr><td colspan=2>&nbsp;&nbsp;No entries&nbsp;&nbsp;</td></tr>"
         
         print("data",self.db.day_data( daystart ))
-        print("json",json.dumps(self.db.day_data( daystart )))
+        dData = json.dumps(self.db.day_data( daystart ))
+        print("dData")
+        print(dData)
+        print("dData")
 
         # Get days with data
         dDays =  [ d[0] for d in self.db.distinct_days( daystart )]
@@ -216,22 +219,23 @@ class OWLogServer(BaseHTTPRequestHandler):
                     </div>                    
                     <hr>
                     <div id='scroll'>
-                        <table>
-                            <tr><th>Time</th><th>Data</th></tr>
-                            {table_data}
-                        </table>
+                        <table id="table"></table>
                         <hr>
                         <a href="https://github.com/alfille/owlogger" target="_blank" rel="noopener noreferrer">OWLogger by Paul H Alfille 2025</a>
                     </div>
                 </div>
             </body>
             <script>
+                var dayData = [];
                 window.onload = () => {{
+                    
                     const d = new Date("{daystart}")
                     
-                    goodDays={dDays};
-                    goodMonths={mDays};
-                    goodYears={yDays};
+                    dayData = JSON.parse('{dData}');
+                    console.log(dayData);
+                    const goodDays={dDays};
+                    const goodMonths={mDays};
+                    const goodYears={yDays};
 
                     function TestDate(x) {{
                         switch (x.cellType) {{
@@ -252,6 +256,7 @@ class OWLogServer(BaseHTTPRequestHandler):
                             selectedDates:[d],
                             onRenderCell(x) {{ if (TestDate(x)) {{ return {{classes:'present'}};}} }},
                         }} ) ;
+                    SortOn();
                     }}
                 function Today() {{ 
                     NewDate(new Date()); 
@@ -266,6 +271,43 @@ class OWLogServer(BaseHTTPRequestHandler):
 
                     location.assign(url.search);
                     }}
+                function CreateTable() {{
+                    const table = document.getElementById("table");
+                    table.innerHTML="";
+                    const head = table.createTHead().insertRow(-1);
+                    ["Time","Source","Data"].forEach( (h,i) => head.insertCell(-1).innerHTML=`<span onclick="SortOn(${{i}})"><B>${{h}}<\B></span>` );
+                    dayData.forEach( r => AddRow( table, r ) );
+                    }}                    
+                function AddRow( table, row_data ) {{
+                    const row = table.insertRow(-1);
+                    row_data.forEach( d => row.insertCell(-1).innerHTML=d );
+                    }}
+                function SortOn( column=null ){{
+                    const so = sessionStorage.getItem("sortorder");
+                    let sortorder = [1,1] ;
+                    console.log(sortorder);
+                    if ( so != null ) {{
+                        sortorder = JSON.parse(so);
+                        console.log(sortorder);
+                        }}
+                    if ( column != null ) {{
+                        if ( column==sortorder[0] ) {{
+                            sortorder[1] = -sortorder[1] ;
+                            }} else {{
+                            sortorder = [column, 1];
+                            }}
+                            console.log(sortorder);
+                        }}
+                    if ( sortorder[1] > 0 ) {{
+                        dayData.sort( (r1,r2) => r1[sortorder[0]].localeCompare(r2[sortorder[0]]) );
+                        }} else {{
+                        dayData.sort( (r2,r1) => r1[sortorder[0]].localeCompare(r2[sortorder[0]]) );
+                        }}
+                    sessionStorage.setItem("sortorder",JSON.stringify(sortorder));
+                    CreateTable();
+                    }}
+                    
+                    
             </script>
         </html>"""
         
