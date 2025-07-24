@@ -1,7 +1,6 @@
 # Summary
 - [Overview](./overview.md)
   - [USE CASE](./use_case.md)
-  - [Display](./display.md)
   - [Reqirements](./requirements.md)
 - [Cloud Server](./cloudserver.md)
   - [Private Virtual Server (PVS)](./pvs.md)
@@ -14,6 +13,10 @@
   - [owlogger install](./owlogger_install.md)
   - [owlogger setup](./owlogger_setup.md)
   - [owlogger usage](./owlogger_use.md)
+- [Display](./display.md)
+  - [Header](./display_header.md)
+  - [Date](./date.md)
+  - [Data](./data.md)
 - [Password protection](./password.md)
   - [OWLOG_USER](./owlog_user.md)
 - [OWPOST](./owpost.md)
