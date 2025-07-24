@@ -3,7 +3,7 @@
   - [USE CASE](./use_case.md)
   - [Reqirements](./requirements.md)
 - [Cloud Server](./cloudserver.md)
-  - [Private Virtual Server (PVS)](./pvs.md)
+  - [Virtual Private Server (VPS)](./pvs.md)
   - [File locations](./locations.md)
   - [Domain](./domain.md)
   - [Firewall](./firewall.md)

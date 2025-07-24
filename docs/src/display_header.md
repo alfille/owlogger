@@ -4,9 +4,9 @@
 
 The top line has 3 clickable controls:
 
-* *owlogger button* Refreshes this page, showing any new data.
-* *Today* jumps back to current day
-* *Help* opens this documentation source in another browser tab.
+* *owlogger button* Refreshes this page, showing any new data
+* *Today* jumps directly to current day
+* *Help* opens this documentation source in another browser tab
 
 # Footer
 
