@@ -1,9 +1,10 @@
 [Unit]
 Description=Run owpost periodically to send data to owlogger
+Requires=owpost.service
 
 [Timer]
-OnBootSec=3min
-OnActiveSec=15min
+OnCalendar=*:0/15          # Every 15 minutes (at :00, :15, :30, :45)
+Persistent=true
 Unit=owpost.service
 
 [Install]

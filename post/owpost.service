@@ -1,12 +1,19 @@
 [Unit]
 Description=Post 1-wire data from owserver to remote owlogger
+Documentation=https://alfille.github.io/owlogger/owpost.html
 After=owserver.service
 Requires=owserver.service
 
 [Service]
 Type=oneshot
+User=www-data
+Group=www-data
 # With configuration file in /etc/owlogger/owpost.toml
 ExecStart=/usr/bin/python3 /usr/local/bin/owpost.py
 # If no configuration file
 # ExecStart=/usr/bin/python3 /usr/local/bin/owpost.py -o localhost:3504 -s https://remote.host:8001
-ExecStart=/usr/bin/python3 /usr/local/bin/owpost.py
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
