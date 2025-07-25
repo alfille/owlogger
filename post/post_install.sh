@@ -15,24 +15,24 @@ fi
 
 # Logger program
 mkdir -p              /usr/local/lib/owlogger
-cp owpost.py        /usr/local/lib/owlogger
-cp owposttext.py    /usr/local/lib/owlogger
+cp --update=all owpost.py        /usr/local/lib/owlogger
+cp --update=all owposttext.py    /usr/local/lib/owlogger
 
 # configuration
 mkdir -p              /etc/owlogger
-cp owpost.toml      /etc/owlogger
+cp --update=all owpost.toml      /etc/owlogger
 chown -R www-data:www-data /etc/owlogger/owpost.toml
 chmod 660             /etc/owlogger/owpost.toml
 
 # script to run owlog_user
-cp owpost     /usr/bin
-cp owposttext /usr/bin
+cp --update=all owpost     /usr/bin
+cp --update=all owposttext /usr/bin
 chmod +x /usr/bin/owpost
 chmod +x /usr/bin/owposttext
 
 # systemd file
-cp owpost.service /etc/systemd/system
-cp owpost.timer   /etc/systemd/system
+cp --update=all owpost.service /etc/systemd/system
+cp --update=all owpost.timer   /etc/systemd/system
 systemctl daemon-reexec
 systemctl daemon-reload
 systemctl enable owpost.service

@@ -269,7 +269,7 @@ class OWLogServer(BaseHTTPRequestHandler):
                 return "&darr;";}}
             sortorder = JSON.parse(sessionStorage.getItem("sortorder"));
             const head = table.createTHead().insertRow(-1);
-            ["Time","Source","Data"].forEach( (h,i) => head.insertCell(-1).innerHTML=`<span onclick="SortOn(${{i}})"><B>${{h}}&nbsp;${{sym(i,sortorder[0],sortorder[1])}}<\B></span>` );
+            ["Time","Source","Data"].forEach( (h,i) => head.insertCell(-1).innerHTML=`<span onclick="SortOn(${{i}})"><B>${{h}}&nbsp;${{sym(i,sortorder[0],sortorder[1])}}</B></span>` );
             const body = table.createTBody();
             dayData.forEach( r => AddRow( body, r ) );
             }}                    
