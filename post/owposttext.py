@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# owpost.py
+# owposttext.py
 #
-# owfs machine upload data to owlogger
+# any text upload data to owlogger
 #
 # Paul H Alfille 2025
 # MIT license
@@ -12,10 +12,7 @@ from requests import put as send_put, post as send_post
 import json
 import datetime
 import argparse
-import math
-from pyownet import protocol
 import sys
-import time
 import tomllib
 import urllib
 from urllib.parse import urlparse
@@ -120,10 +117,18 @@ def main(sysargs):
     # Second pass at command line
     parser = argparse.ArgumentParser(
         parents=[parser],
-        prog="owpost",
-        description="Log 1-wire data externally to protect interior sensors. Transmittter component",
+        prog="owposttext",
+        description="Log any data data externally to protect interior sensors. Transmittter component",
         epilog="By Paul H Alfille 2025 -- repository: https://github.com/alfille/owlogger")
 
+    # text
+    parser.add_argument('input',
+        nargs='*',
+        type=str
+        dest='input',
+        help='text to be sent to owlogger, Or use stdin (e.g. pipe)',
+        )
+    
     # token
     parser.add_argument('-t','--token',
         required=False,
@@ -145,53 +150,14 @@ def main(sysargs):
         help=f'Server network address (optional) default={server}\t\nNote that this default is a local testing setup.'
         )
         
-    # One-wire owserver address
-    default_owport = 4304
-    owserver = f"localhost:{default_owport}"
-    parser.add_argument('-o','--owserver',
-        required=False,
-        default=toml.get("owserver",owserver),
-        dest="owserver",
-        nargs='?',
-        help=f'owserver network address (optional) default={owserver}'
-        )
-        
-    # Celsius
-    parser.add_argument( "-C", "--Celsius",
-        required=False,
-        default=toml.get("Celsius",False),
-        dest="Celsius",
-        action = "store_true",
-        help="Use Celsius temperature scale for readings. Default: Fahrenheit"
-        )
-
-    # Fahrenheit
-    parser.add_argument( "-F", "--Fahrenheit",
-        required=False,
-        default=toml.get("Fahrenheit",True),
-        dest="Fahrenheit",
-        action = "store_true",
-        help="Use Fahrenheit temperature scale for readings. Default: Fahrenheit"
-        )
-        
     # name
     parser.add_argument('-n','--name',
         required=False,
-        default=toml.get("name","owpost"),
+        default=toml.get("name","owposttext"),
         dest="name",
         nargs='?',
         type=str,
-        help=f'Optional name for data source. Default owpost'
-        )
-        
-    # periodic
-    parser.add_argument('-p','--period',
-        required=False,
-        default=toml.get("period",argparse.SUPPRESS),
-        dest="period",
-        nargs='?',
-        type=int,
-        help=f'Period (minutes) to repeat reading and sending (single-shot if not present)'
+        help=f'Optional name for data source. Default owposttext'
         )
         
     # debug output
@@ -219,71 +185,14 @@ def main(sysargs):
     else:
         server = Transmit( args.server, args.name, None )
 
-    # temperature flag
-    if args.Celsius or not args.Fahrenheit:
-        temp_scale=protocol.FLG_TEMP_C
+    if args.input:
+        if debug:
+            print("command line text")
+        server.upload( ' '.join(args.input))
     else:
-        temp_scale=protocol.FLG_TEMP_F
-
-    #
-    # create owserver proxy object
-    #
-    (owaddr,owport) = server_tuple( args.owserver, default_owport )
-    try:
-        owproxy = protocol.proxy(
-            owaddr, owport, 
-            flags=temp_scale,
-            verbose=args.debug, )
-    except protocol.ConnError as error:
-        print(f"Unable to open connection to '{owaddr}:{owport} Error: {error}")
-        sys.exit(1)
-    except protocol.ProtocolError as error:
-        print("'{owaddr}:{owport}' not an owserver? Protocol Error: {error}")
-        sys.exit(1)
-
-    #period
-    if "period" in args:
-        period = args.period
-        if math.isnan(period):
-            period = 30
-    else:
-        period = None
-
-    # Loop
-    while True:
-        # Get Temperatures
-        no_data = True
-        temperatures = []
-        try:
-            owdir = owproxy.dir(slash=False, bus=False)
-        except protocol.OwnetError as e:
-            print( "Cannot read owserver Error: {e}" )
-            owdir = []
-        for sensor in owdir:
-            #stype = owproxy.read(sensor + '/type').decode()
-            try:
-                temp = float(owproxy.read(sensor + '/temperature'))
-                temperatures.append( temp )
-            except protocol.OwnetError:
-                pass
-        if len(temperatures)>0:
-            temperature_string = " ".join([f"T {t:.2f}" for t in temperatures])
-            no_data = False
-            
-        # Hdevices = devs_with_humidity() -- future
-        
-        if no_data:
-            server.upload( "no data" )
-        else:
-            server.upload( " ".join([temperature_string]) )
-
-        if period==None:
-            # single shot
-            break
-
-        # delay and repeat
-        time.sleep( 60*period )
-        
+        if debug:
+            print("stdin text")
+        server.upload( sys.stdin.read().strip() )
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))

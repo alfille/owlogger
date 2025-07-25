@@ -16,6 +16,7 @@ fi
 # Logger program
 mkdir -p              /usr/local/lib/owlogger
 cp owpost.py        /usr/local/lib/owlogger
+cp owposttext.py    /usr/local/lib/owlogger
 
 # configuration
 mkdir -p              /etc/owlogger
@@ -24,8 +25,10 @@ chown -R www-data:www-data /etc/owlogger/owpost.toml
 chmod 660             /etc/owlogger/owpost.toml
 
 # script to run owlog_user
-cp owpost /usr/bin
+cp owpost     /usr/bin
+cp owposttext /usr/bin
 chmod +x /usr/bin/owpost
+chmod +x /usr/bin/owposttext
 
 # systemd file
 cp owpost.service /etc/systemd/system

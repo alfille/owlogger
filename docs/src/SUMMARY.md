@@ -27,7 +27,7 @@
   - [owserver](./owserver.md)
   - [USB](./usb1wire.md)
   - [Serial](./serial1wire.md)
-  - [GPIO direct harware](./gpio1wire.md)
+  - [GPIO direct hardware](./gpio1wire.md)
   - [Network](./network1wire.md)
 - [ADVANCED](./advanced.md)
   - [Database](./database.md)
