@@ -124,8 +124,7 @@ def main(sysargs):
     # text
     parser.add_argument('input',
         nargs='*',
-        type=str
-        dest='input',
+        type=str,
         help='text to be sent to owlogger, Or use stdin (e.g. pipe)',
         )
     
