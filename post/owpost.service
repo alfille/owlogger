@@ -9,7 +9,7 @@ Type=oneshot
 User=www-data
 Group=www-data
 # With configuration file in /etc/owlogger/owpost.toml
-ExecStart=/usr/bin/python3 /usr/local/bin/owpost.py
+ExecStart=/usr/bin/python3 /usr/local/lib/owpost.py
 # If no configuration file
 # ExecStart=/usr/bin/python3 /usr/local/bin/owpost.py -o localhost:3504 -s https://remote.host:8001
 StandardOutput=journal
