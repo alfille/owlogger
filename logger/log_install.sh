@@ -81,7 +81,7 @@ systemctl daemon-reexec
 systemctl daemon-reload
 systemctl enable owlogger.service
 systemctl start  owlogger.service
-systemctl status owlogger.service
+systemctl status --no-pager owlogger.service
 
 echo "OWLOGGER install process finished"
 echo "---------------------------------"

@@ -74,7 +74,7 @@ systemctl daemon-reexec
 systemctl daemon-reload
 systemctl enable owpost.service
 systemctl start  owpost.service
-systemctl status owpost.service
+systemctl status --no-pager owpost.service
 
 echo "OWPOST install process finished"
 echo "-------------------------------"
