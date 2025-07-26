@@ -3,7 +3,7 @@ Description=Run owpost periodically to send data to owlogger
 Requires=owpost.service
 
 [Timer]
-OnCalendar=*:0/15          # Every 15 minutes (at :00, :15, :30, :45)
+OnCalendar=*-*-* *:0/15:00
 Persistent=true
 Unit=owpost.service
 
