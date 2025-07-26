@@ -53,6 +53,7 @@ fi
 mkdir -p          /usr/local/lib/owlogger
 \cp owpost.py     /usr/local/lib/owlogger
 \cp owposttext.py /usr/local/lib/owlogger
+\cp -R pyownet    /usr/local/lib/owlogger
 
 # configuration
 mkdir -p              /etc/owlogger
