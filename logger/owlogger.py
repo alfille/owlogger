@@ -404,7 +404,9 @@ class Database:
         # Add a record
         if debug:
             print( f"Adding _{value}" )
-        self.command( """INSERT INTO datalog( source, value ) VALUES (?,?) """, ( source, value, ) )
+        self.command( """INSERT INTO datalog( date, source, value ) VALUES (?,?,?) """, 
+            ( datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), source, value, ) 
+            )
 
     def day_data( self, day ):
         # Get records from a full day
