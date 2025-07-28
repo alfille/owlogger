@@ -202,6 +202,7 @@ class OWLogServer(BaseHTTPRequestHandler):
                 <button id="reload" onclick="globalThis.Reload()">OWLogger</button>
                 <a href="#" onclick="globalThis.Today()">Today</a>
                 <a href="https://alfille.github.io/owlogger/" target="_blank" rel="noopener noreferrer">Help</a>
+                <span>{datetime.datetime.now().strftime("%m/%d/%Y %H:%M")}</span>
             </div>
             <div id="crowd">
                 <button id='Ucal' onclick="globalThis.dp.show()"> &#128467;</button>
