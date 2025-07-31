@@ -217,9 +217,76 @@ class OWLogServer(BaseHTTPRequestHandler):
         </div>
     </body>
     <script>
+        class Stat {{
+            constructor() {{
+                this.lines = 0;
+                //  Calculation from Wikipedia article
+                this.N = 0;
+                this.Q = 0.;
+                this.A = 0.;
+                this.max = null ;
+                this.min = null ;
+                }}
+            add( linex ) {{
+                this.lines += 1;
+                lines.forEach( x => {{
+                    this.N += 1 ;
+                    this.Q += (this.N-1)*(x-this.A)**2/this.N
+                    this.A += (x-this.A)/this.N ;
+                    if ( this.N == 1 ) {{
+                        this.max = x ;
+                        this.min = x ;
+                        }} else {{
+                        this.max = Math.max( x, this.max ) ;
+                        this.min = Math.min( x, this.min ) ;
+                        }}
+                    }} );
+                }}
+            Max() {{
+                return this.max ;
+                }}
+            Min() {{
+                return this.min ;;
+                }}
+            Lines() {{
+                return this.lines ;
+                }}
+            N() {{
+                return this.N;
+                }}
+            Avg() {{
+                return this.A ;
+                }}
+            Std() {{
+                return Math.sqrt( this.Q/this.N) ;
+            }}
+        class StatList {{
+            constructor( data ) {{
+                this.all = new Stat() ;
+                this.list = {} ;
+                data.forEach( dline => this.addline(dline) );
+                }}
+            addline( dline ) {{
+                t = dline[1] ;
+                numbers = dline[3].match(/-?(?:\d+|\d*\.\d+)/g).map(Number) ;
+                this.all.add(numbers);
+                if ( !(t in this.list) ) {{
+                    this.list[t] = new Stat ;
+                    }}
+                this.list[t].add(numbers);
+                }}
+            All() {{
+                return this.all ;
+                }}
+            Keys() {{
+                return Object.keys(this.list) ;
+                }}
+            Stat(key) {{
+                return this.list[key] ;
+                }}
+            }}
         var dayData = [];
         window.onload = () => {{
-            
             const d = new Date("{daystart}")
             
             dayData = JSON.parse('{dData}');
@@ -261,7 +328,7 @@ class OWLogServer(BaseHTTPRequestHandler):
 
             location.assign(url.search);
             }}
-        function CreateTable() {{
+        function CreateDataTable() {{
             const table = document.getElementById("table");
             table.innerHTML="";
             const sym=(i,s0,s1)=>{{
@@ -271,6 +338,14 @@ class OWLogServer(BaseHTTPRequestHandler):
             sortorder = JSON.parse(sessionStorage.getItem("sortorder"));
             const head = table.createTHead().insertRow(-1);
             ["Time","Source","Data"].forEach( (h,i) => head.insertCell(-1).innerHTML=`<span onclick="SortOn(${{i}})"><B>${{h}}&nbsp;${{sym(i,sortorder[0],sortorder[1])}}</B></span>` );
+            const body = table.createTBody();
+            dayData.forEach( r => AddRow( body, r ) );
+            }}
+        function CreateStatTable() {{
+            const table = document.getElementById("table");
+            table.innerHTML="";
+            const head = table.createTHead().insertRow(-1);
+            ["Source","Type","Values","Combined"].forEach( (h,i) => head.insertCell(-1).innerHTML='<B>${{h}}</B>` );
             const body = table.createTBody();
             dayData.forEach( r => AddRow( body, r ) );
             }}                    
@@ -297,7 +372,7 @@ class OWLogServer(BaseHTTPRequestHandler):
                 dayData.sort( (r2,r1) => r1[sortorder[0]].localeCompare(r2[sortorder[0]]) );
                 }}
             sessionStorage.setItem("sortorder",JSON.stringify(sortorder));
-            CreateTable();
+            CreateDataTable();
             }}
             
             
