@@ -71,29 +71,46 @@ class StatList {
         return this.list[key] ;
     }
 }
-function TestDate(x) {
-    switch (x.cellType) {
-        case 'day':
-            return globals.goodDays.includes(x.date.toISOString().split("T")[0]);
-        case 'month':
-            return globals.goodMonths.includes(x.date.toISOString().split("T")[0]);
-        case 'year':
-            return globals.goodYears.includes(x.date.toISOString().split("T")[0]);
-        default:
-            return false;
+class Swipe {
+    constructor() {
+        this.thresholdX = 100;
+        this.thresholdY = 31;
+        window.addEventListener('touchstart', (event)=>this.start(event) ); 
+        window.addEventListener('touchend',   (event)=>this.stop(event)  ); 
+    }
+    start( event ) {
+        this.initialX = event.touches[0].clientX;
+        this.initialY = event.touches[0].clientY;
+    }
+    stop() {
+        const deltaX = this.initialX - event.changedTouches[0].clientX;
+        const deltaY = this.initialY - event.changedTouches[0].clientY;
+        if ( Math.abs(deltaY) < this.thresholdY ) {
+            if ( deltaX > this.thresholdX ) {
+                let copy = new Date(globals.daystart.valueOf());
+                NewDate( new Date(copy.setDate(copy.getDate()-1)) );
+            } else if ( deltaX < -this.thresholdX ) {
+                let copy = new Date(globals.daystart.valueOf());
+                NewDate( new Date(copy.setDate(copy.getDate()+1)) );
+            }
+        }
     }
 }
+function YYYYMMDD(date) {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
 function NewDate(date) {
-    const d = date.toLocaleString("en-CA").split(",")[0];
     const url = new URL(location.href);
-    url.searchParams.set('date', d);
+    url.searchParams.set('date', YYYYMMDD(date));
     url.searchParams.set('type', globals.page_type);
     location.assign(url.search);
 }
 function NewType(ntype) {
-    const d = globals.daystart.toLocaleString("en-CA").split(",")[0];
     const url = new URL(location.href);
-    url.searchParams.set('date', d);
+    url.searchParams.set('date', YYYYMMDD(globals.daystart));
     url.searchParams.set('type', ntype);
     location.assign(url.search);
 }
@@ -154,11 +171,11 @@ function SortOn( column=null ){
 function TestDate(x) {
     switch (x.cellType) {
         case 'day':
-            return globals.goodDays.includes(x.date.toISOString().split("T")[0]);
+            return globals.goodDays.includes(YYYYMMDD(x.date));
         case 'month':
-            return globals.goodMonths.includes(x.date.toISOString().split("T")[0]);
+            return globals.goodMonths.includes(YYYYMMDD(x.date));
         case 'year':
-            return globals.goodYears.includes(x.date.toISOString().split("T")[0]);
+            return globals.goodYears.includes(YYYYMMDD(x.date));
         default:
             return false;
     }
@@ -169,11 +186,10 @@ window.onload = () => {
             onSelect(x) {NewDate(x.date)},
             isMobile:true,
             buttons:[{content:'Today',onClick:(dp)=>NewDate(new Date())}],
-//           altField:"#alt_cal",
-//           altFieldDateFormat:"M/D/YYYY",
             selectedDates:[globals.daystart],
             onRenderCell(x) { if (TestDate(x)) { return {classes:'present'};} },
     } ) ;
+    var swipe = new Swipe() ;
     document.getElementById("date").innerHTML = globals.header_date;
     document.getElementById("time").innerHTML = globals.header_time;
     document.getElementById("showdate").innerHTML = globals.daystart.toLocaleDateString();

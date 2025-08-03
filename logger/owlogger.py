@@ -181,15 +181,12 @@ class OWLogServer(BaseHTTPRequestHandler):
 
         # Get days with data
         dDays =  [ d[0] for d in self.db.distinct_days( daystart )]
-        #print( "Distinct days", dDays )
 
         # Get months with data
         mDays =  [ f"{daystart.year}-{m[0]}-01" for m in self.db.distinct_months( daystart )]
-        #print( "Distinct months", mDays )
         
         # Get years with data
         yDays =  [ f"{y[0]}-01-01" for y in self.db.distinct_years()]
-        #print( "Distinct years", yDays )
 
         # Generate HTML
         return f"""
