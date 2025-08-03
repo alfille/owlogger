@@ -41,6 +41,7 @@ body {
         grid-template: 
             'toolbar datebar' auto
             'toolbar contentarea' auto ;
+        grid-template-columns: min-content 1fr;
     }
     #toolbar {
         text-align:left; 
