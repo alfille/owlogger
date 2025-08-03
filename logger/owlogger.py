@@ -65,7 +65,12 @@ class OWLogServer(BaseHTTPRequestHandler):
         # needed for js and css
         match self.path:
             # check for permitted file requests (only a few carefully chosen)
-            case "/air-datepicker.css"|"/air-datepicker.js"|"/favicon.ico":
+            case  "/air-datepicker.css" \
+                | "/air-datepicker.js"  \
+                | "/favicon.ico"        \
+                | "/owlogger.css"       \
+                | "/owlogger.js"        \
+                :      
                 with open(self.path.strip("/"),"rb") as f:
                     self._good_get()
                     self.wfile.write(f.read())
@@ -101,6 +106,18 @@ class OWLogServer(BaseHTTPRequestHandler):
         else:
             # Else use today
             date = datetime.date.today().isoformat()
+            
+        # parse url for type if present
+        if "type" in u:
+            match u["type"][0]:
+                case "plot":
+                    self.type = "plot"
+                case "stat":
+                    self.type = "stat"
+                case _:
+                    self.type = "data"
+        else:
+            self.type = "data"
             
         # check date
         try:
@@ -176,40 +193,32 @@ class OWLogServer(BaseHTTPRequestHandler):
 
         # Generate HTML
         return f"""
-<html>
+    <html>
     <head>
         <title>Logger</title>
-        <style>
-            body {{overflow:hidden; font-size:2em;}}
-            #reload {{ background-color:blue; color:white; border-radius:8px;}}
-            #all {{width:100%; height:100%;display:flex;flex-direction:column; padding:10px; }}
-            #space {{display:flex; justify-content:space-between; flex-wrap:nowrap; font-size: 1.2em; border: black dotted 1px;}}
-            #crowd {{display:flex; align-items:center; flex-wrap:nowrap;}}
-            #uCal,input[type='text'] {{ font-size: 2em; }}
-            .present {{background-color: #e6ffe6;}}
-            #scroll {{overflow-y:auto;position:relative;}}
-            table {{ border-collapse: collapse;font-size:1em; width:100%; }}
-            thead {{position:sticky;top:0;background-color:white;}}
-            tr:nth-child(even) {{background-color: #D6EEEE; border-bottom: 1px solid #ddd; }}
-            td {{ padding-left: 1em; padding-right: 1em; }}
-        </style>
+        <link href="./owlogger.css" rel="stylesheet">
         <link href="./air-datepicker.css" rel="stylesheet">
-        <script src="./air-datepicker.js"></script>
     </head>
     <body>
         <div id='all'>
-            <div id="space">
-                <button id="reload" onclick="globalThis.Reload()">OWLogger</button>
-                <a href="#" onclick="globalThis.Today()">Today</a>
-                <a href="https://alfille.github.io/owlogger/" target="_blank" rel="noopener noreferrer">Help</a>
-                <span>{datetime.datetime.now().strftime("%m/%d/%Y %H:%M")}</span>
+            <div id="toolbar">
+                <button id="reload" onclick="globalThis.NewDate(globals.daystart)">OWLogger</button>
+                <a id="today" href="#" onclick="globalThis.NewDate(new Date())">Today</a>
+                <a id="help" href="https://alfille.github.io/owlogger/" target="_blank" rel="noopener noreferrer">Help</a>
+                <a id="data" href="#" onclick="globalThis.NewType('data')">Data</a>
+                <a id="stat" href="#" onclick="globalThis.NewType('stat')">Stats</a>
+                <a id="plot" href="#" onclick="globalThis.NewType('plot')" class="disabled-link">Graph</a>
+                <span id="date"></span>
+                <span></span>
+                <a id="statswap" href="#" onclick="globalThis.StatSwap()"></a>
+                <span id="time"></span>
             </div>
-            <div id="crowd">
-                <button id='Ucal' onclick="globalThis.dp.show()"> &#128467;</button>
-                <input id='new_cal' type="text" size="10" readonly>
+            <div id="datebar" onclick="globalThis.dp.show()">
+                <button id='Ucal'> &#128467;</button>
+                <input id='new_cal' type="text" size="10" readonly hidden>&nbsp;<span id="showdate"></span>
+                <span id="alt_cal"></span>
             </div>                    
-            <hr>
-            <div id='scroll'>
+            <div id='contentarea'>
                 <table id="table"></table>
                 <hr>
                 <a href="https://github.com/alfille/owlogger" target="_blank" rel="noopener noreferrer">OWLogger by Paul H Alfille 2025</a>
@@ -217,166 +226,19 @@ class OWLogServer(BaseHTTPRequestHandler):
         </div>
     </body>
     <script>
-        class Stat {{
-            constructor() {{
-                this.lines = 0;
-                //  Calculation from Wikipedia article
-                this.N = 0;
-                this.Q = 0.;
-                this.A = 0.;
-                this.max = null ;
-                this.min = null ;
-                }}
-            add( linex ) {{
-                this.lines += 1;
-                lines.forEach( x => {{
-                    this.N += 1 ;
-                    this.Q += (this.N-1)*(x-this.A)**2/this.N
-                    this.A += (x-this.A)/this.N ;
-                    if ( this.N == 1 ) {{
-                        this.max = x ;
-                        this.min = x ;
-                        }} else {{
-                        this.max = Math.max( x, this.max ) ;
-                        this.min = Math.min( x, this.min ) ;
-                        }}
-                    }} );
-                }}
-            Max() {{
-                return this.max ;
-                }}
-            Min() {{
-                return this.min ;;
-                }}
-            Lines() {{
-                return this.lines ;
-                }}
-            N() {{
-                return this.N;
-                }}
-            Avg() {{
-                return this.A ;
-                }}
-            Std() {{
-                return Math.sqrt( this.Q/this.N) ;
+        var globals = {{
+            dayData: JSON.parse('{dData}'),
+            goodDays: {dDays},
+            goodMonths: {mDays},
+            goodYears:{yDays},
+            daystart: new Date("{daystart}"),
+            page_type: "{self.type}",
+            header_date:"{datetime.datetime.now().strftime("%m/%d/%Y")}",
+            header_time:"{datetime.datetime.now().strftime("%H:%M")}",
             }}
-        class StatList {{
-            constructor( data ) {{
-                this.all = new Stat() ;
-                this.list = {} ;
-                data.forEach( dline => this.addline(dline) );
-                }}
-            addline( dline ) {{
-                t = dline[1] ;
-                numbers = dline[3].match(/-?(?:\d+|\d*\.\d+)/g).map(Number) ;
-                this.all.add(numbers);
-                if ( !(t in this.list) ) {{
-                    this.list[t] = new Stat ;
-                    }}
-                this.list[t].add(numbers);
-                }}
-            All() {{
-                return this.all ;
-                }}
-            Keys() {{
-                return Object.keys(this.list) ;
-                }}
-            Stat(key) {{
-                return this.list[key] ;
-                }}
-            }}
-        var dayData = [];
-        window.onload = () => {{
-            const d = new Date("{daystart}")
-            
-            dayData = JSON.parse('{dData}');
-            const goodDays={dDays};
-            const goodMonths={mDays};
-            const goodYears={yDays};
-
-            function TestDate(x) {{
-                switch (x.cellType) {{
-                    case 'day':
-                        return goodDays.includes(x.date.toISOString().split("T")[0]);
-                    case 'month':
-                        return goodMonths.includes(x.date.toISOString().split("T")[0]);
-                    case 'year':
-                        return goodYears.includes(x.date.toISOString().split("T")[0]);
-                    default:
-                        return false;
-                    }}
-                }}
-
-            globalThis.dp = new AirDatepicker("#new_cal", {{
-                    onSelect(x) {{NewDate(x.date)}},
-                    isMobile:true,
-                    selectedDates:[d],
-                    onRenderCell(x) {{ if (TestDate(x)) {{ return {{classes:'present'}};}} }},
-                }} ) ;
-            SortOn();
-            }}
-        function Today() {{ 
-            NewDate(new Date()); 
-            }}
-        function Reload() {{
-            window.location.reload();
-            }}
-        function NewDate(date) {{
-            const d = date.toISOString().split("T")[0];
-            const url = new URL(location.href);
-            url.searchParams.set('date', d);
-
-            location.assign(url.search);
-            }}
-        function CreateDataTable() {{
-            const table = document.getElementById("table");
-            table.innerHTML="";
-            const sym=(i,s0,s1)=>{{
-                if (i!=s0){{return "&nbsp";}}
-                if ( s1>0){{return "&uarr;";}}
-                return "&darr;";}}
-            sortorder = JSON.parse(sessionStorage.getItem("sortorder"));
-            const head = table.createTHead().insertRow(-1);
-            ["Time","Source","Data"].forEach( (h,i) => head.insertCell(-1).innerHTML=`<span onclick="SortOn(${{i}})"><B>${{h}}&nbsp;${{sym(i,sortorder[0],sortorder[1])}}</B></span>` );
-            const body = table.createTBody();
-            dayData.forEach( r => AddRow( body, r ) );
-            }}
-        function CreateStatTable() {{
-            const table = document.getElementById("table");
-            table.innerHTML="";
-            const head = table.createTHead().insertRow(-1);
-            ["Source","Type","Values","Combined"].forEach( (h,i) => head.insertCell(-1).innerHTML='<B>${{h}}</B>` );
-            const body = table.createTBody();
-            dayData.forEach( r => AddRow( body, r ) );
-            }}                    
-        function AddRow( table, row_data ) {{
-            const row = table.insertRow(-1);
-            row_data.forEach( d => row.insertCell(-1).innerHTML=d );
-            }}
-        function SortOn( column=null ){{
-            const so = sessionStorage.getItem("sortorder");
-            let sortorder = [0,1] ;
-            if ( so != null ) {{
-                sortorder = JSON.parse(so);
-                }}
-            if ( column != null ) {{
-                if ( column==sortorder[0] ) {{
-                    sortorder[1] = -sortorder[1] ;
-                    }} else {{
-                    sortorder = [column, 1];
-                    }}
-                }}
-            if ( sortorder[1] > 0 ) {{
-                dayData.sort( (r1,r2) => r1[sortorder[0]].localeCompare(r2[sortorder[0]]) );
-                }} else {{
-                dayData.sort( (r2,r1) => r1[sortorder[0]].localeCompare(r2[sortorder[0]]) );
-                }}
-            sessionStorage.setItem("sortorder",JSON.stringify(sortorder));
-            CreateDataTable();
-            }}
-            
-            
     </script>
+    <script src="./owlogger.js"></script>
+    <script src="./air-datepicker.js"></script>
 </html>"""
         
     def _send_auth_challenge(self):
