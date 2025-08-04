@@ -114,59 +114,66 @@ function NewType(ntype) {
     url.searchParams.set('type', ntype);
     location.assign(url.search);
 }
-function CreateDataTable() {
-    const table = document.getElementById("table");
-    table.innerHTML="";
-    const sym=(i,s0,s1)=>{
-        if (i!=s0){return "&nbsp";}
-        if ( s1>0){return "&uarr;";}
-        return "&darr;";
+class Data {
+    constructor() {
+        this.table = document.getElementById("table");
+        this.table.innerHTML="";
+        this.thead = this.table.createTHead().insertRow(-1);
+        this.tbody = this.table.createTBody();
     }
-    sortorder = JSON.parse(sessionStorage.getItem("sortorder"));
-    const head = table.createTHead().insertRow(-1);
-    ["Time","Source","Data"].forEach( (h,i) => head.insertCell(-1).innerHTML=`<span onclick="SortOn(${i})"><B>${h}&nbsp;${sym(i,sortorder[0],sortorder[1])}</B></span>` );
-    const body = table.createTBody();
-    globals.dayData.forEach( r => AddRow( body, r ) );
-}
-function CreateStatTable() {
-    const table = document.getElementById("table");
-    table.innerHTML="";
-    const head = table.createTHead().insertRow(-1);
-    ["Source","Types","Values"].forEach( (h,i) => head.insertCell(-1).innerHTML=`<B>${h}</B>` );
-    const statData = new StatList( globals.dayData ) ;
-    const body = table.createTBody();
-    statData.Keys().map( k=> statData.Stat(k)).forEach( s => AddStat( table, s ) ) ;
-    AddStat( table, statData.All() );
-}                  
-function AddRow( table, row_data ) {
-    const row = table.insertRow(-1);
-    row_data.forEach( d => row.insertCell(-1).innerHTML=d );
-}
-function AddStat( table, stat ) {
-    AddRow( table, [`<B>${stat.Name()}</B>`, "Lines, Readings", `${stat.Lines()}, ${stat.N()}`]);
-    AddRow( table, ["", "Avg (Std)", (stat.N()==0)?"":`${stat.Avg().toFixed(2)} (${stat.Std().toFixed(2)})`]);
-    AddRow( table, ["", "Range", (stat.N()==0)?"":`${stat.Min()} &mdash; ${stat.Max()}`]);
-}          
-function SortOn( column=null ){
-    const so = sessionStorage.getItem("sortorder");
-    let sortorder = [0,1] ;
-    if ( so != null ) {
-        sortorder = JSON.parse(so);
-    }
-    if ( column != null ) {
-        if ( column==sortorder[0] ) {
-            sortorder[1] = -sortorder[1] ;
-        } else {
-            sortorder = [column, 1];
+    Show() {
+        this.table.classList.add("dataTable");
+        this.SortOn() ;
+        this.CreateDataTable() ;
+    }          
+    SortOn( column=null ){
+        const so = sessionStorage.getItem("sortorder");
+        let sortorder = [0,1] ;
+        if ( so != null ) {
+            sortorder = JSON.parse(so);
         }
+        if ( column != null ) {
+            if ( column==sortorder[0] ) {
+                sortorder[1] = -sortorder[1] ;
+            } else {
+                sortorder = [column, 1];
+            }
+        }
+        if ( sortorder[1] > 0 ) {
+            globals.dayData.sort( (r1,r2) => r1[sortorder[0]].localeCompare(r2[sortorder[0]]) );
+        } else {
+            globals.dayData.sort( (r2,r1) => r1[sortorder[0]].localeCompare(r2[sortorder[0]]) );
+        }
+        sessionStorage.setItem("sortorder",JSON.stringify(sortorder));
     }
-    if ( sortorder[1] > 0 ) {
-        globals.dayData.sort( (r1,r2) => r1[sortorder[0]].localeCompare(r2[sortorder[0]]) );
-    } else {
-        globals.dayData.sort( (r2,r1) => r1[sortorder[0]].localeCompare(r2[sortorder[0]]) );
+    CreateDataTable() {
+        const sym=(i,s0,s1)=>{
+            if (i!=s0){return "&nbsp";}
+            if ( s1>0){return "&uarr;";}
+            return "&darr;";
+        }
+        const sortorder = JSON.parse(sessionStorage.getItem("sortorder"));
+        ["Time","Source","Data"].forEach( (h,i) => this.thead.insertCell(-1).innerHTML=`<span onclick="SortOn(${i})"><B>${h}&nbsp;${sym(i,sortorder[0],sortorder[1])}</B></span>` );
+        globals.dayData.forEach( r => this.AddRow( r ) );
     }
-    sessionStorage.setItem("sortorder",JSON.stringify(sortorder));
-    CreateDataTable();
+    AddRow( row_data ) {
+        const row = this.tbody.insertRow(-1);
+        row_data.forEach( d => row.insertCell(-1).innerHTML=d );
+    }
+}
+class Statistics extends Data {
+    Show() {
+        this.table.classList.add("statTable");
+        ["Source","Types","Values"].forEach( (h,i) => this.thead.insertCell(-1).innerHTML=`<B>${h}</B>` );
+        const statData = new StatList( globals.dayData ) ;
+        statData.Keys().map( k=> statData.Stat(k)).forEach( s => this.AddStat( s ) ) ;
+        this.AddStat( statData.All() );
+    }                  
+    AddStat( stat ) {
+        this.AddRow( [`<B>${stat.Name()}</B>`, "Lines, Readings", `${stat.Lines()}, ${stat.N()}`]);
+        this.AddRow( ["", "Avg (Std)", (stat.N()==0)?"":`${stat.Avg().toFixed(2)} (${stat.Std().toFixed(2)})`]);
+        this.AddRow( ["", "Range", (stat.N()==0)?"":`${stat.Min()} &mdash; ${stat.Max()}`]);
+    }
 }
 function TestDate(x) {
     switch (x.cellType) {
@@ -180,8 +187,130 @@ function TestDate(x) {
             return false;
     }
 }
-window.onload = () => {
+class Plot {
+    constructor() {
+        const div = document.getElementById("graph") ;
+        this.canvas = document.getElementById("graphcanvas");
 
+        this.canvas.width = div.clientWidth ;
+        this.width = this.canvas.width ;
+        this.canvas.height = div.clientHeight ;
+        this.height = this.canvas.height ;
+        
+        this.ctx = this.canvas.getContext('2d');
+        
+        if ( 'orientation' in screen ) {
+            screen.orientation.addEventListener('change', () => NewType('plot') );
+        }
+    }
+    Show() {
+        this.data();
+        this.setup();
+        this.legend();
+        this.plot();
+    }
+    
+    data() {
+        this.Ys={};
+        this.maxY = -Infinity ;
+        this.minY = Infinity ;
+        globals.dayData.forEach( row => {
+            const time= ((row[0].match(/(\d+)/g))??["0"]).map(Number).reduceRight((t,x)=>x+t/60) ;
+            const key = row[1] ;
+            if ( !(key in this.Ys) ) {
+                this.Ys[key] = [] ;
+            }
+            const numbers = ((row[2].match(/-?(\d+\.?\d*|\.?\d+)/g))??[]).map(Number) ;
+            this.maxY = Math.max( ...numbers, this.maxY ) ;
+            this.minY = Math.min( ...numbers, this.minY ) ;
+            numbers.forEach( n => this.Ys[key].push([time,n]));
+        });
+
+        this.padX = 10;
+        this.padY = 10 ;
+        this.X0 = 0.;
+        this.X1 = 24.;
+        this.scaleX = (this.width-2*this.padX)/(this.X1-this.X0) ;
+        this.Y1 = Math.round( this.maxY + 1 );
+        this.Y0 = Math.round( this.minY - 2 );
+        this.scaleY = (this.height-2*this.padY)/(this.Y1-this.Y0) ;
+    }
+    setup() {
+        this.colors=["red","darkorange","purple","green","darkgreen","pink","brown","darkgray","dodgerblue"];
+        this.ctx.fillStyle = "white" ;
+        this.ctx.fillRect(0,0,this.width,this.height) ;
+        this.ctx.strokeStyle = "lightgray" ;
+        this.ctx.lineWidth = 1 ;
+        for ( let time = this.X0; time <= this.X1 ; time += 1 ) {
+            // grid
+            this.ctx.beginPath() ;
+            this.ctx.moveTo( this.X(time),this.Y(this.Y0) ) ;
+            this.ctx.lineTo( this.X(time),this.Y(this.Y1) ) ;
+            this.ctx.stroke() ;
+        }
+        this.ctx.lineWidth = 2 ;
+        for ( let time = this.X0; time <= this.X1 ; time += 2 ) {
+            // grid
+            this.ctx.beginPath() ;
+            this.ctx.moveTo( this.X(time),this.Y(this.Y0) ) ;
+            this.ctx.lineTo( this.X(time),this.Y(this.Y1) ) ;
+            this.ctx.stroke() ;
+        }
+        this.ctx.lineWidth = 3 ;
+        for ( let time = this.X0; time <= this.X1 ; time += 4 ) {
+            // grid
+            this.ctx.beginPath() ;
+            this.ctx.moveTo( this.X(time),this.Y(this.Y0) ) ;
+            this.ctx.lineTo( this.X(time),this.Y(this.Y1) ) ;
+            this.ctx.stroke() ;
+        }
+        this.ctx.lineWidth = 1 ;
+        for ( let temp = this.Y0; temp <= this.Y1 ; temp += 1 ) {
+            // grid
+            this.ctx.beginPath() ;
+            this.ctx.moveTo( this.X(this.X0),this.Y(temp) ) ;
+            this.ctx.lineTo( this.X(this.X1),this.Y(temp) ) ;
+            this.ctx.stroke() ;
+        }
+        this.ctx.font = `${Math.round(this.scaleY/2)}px san serif` ;
+        this.ctx.fillStyle = "gray" ;
+        for ( let temp = this.Y0; temp <= this.Y1 ; temp += 1 ) {
+            this.ctx.fillText(Number(temp).toFixed(0),this.X(this.X0),this.Y(temp))
+        }
+        this.ctx.font = `${this.padX}px san serif` ;
+        this.ctx.fillStyle = "gray" ;
+        for ( let time = this.X0+4; time < this.X1 ; time += 4 ) {
+            this.ctx.fillText(Number(time).toFixed(0),this.X(time),this.height)
+        }
+    }
+    legend() {
+        this.ctx.font = `${Math.round(this.scaleY/2)}px san serif` ;
+        Object.keys(this.Ys).forEach( (k,i)=> {
+            const offset = .5 * (i%2) ;
+            this.ctx.fillStyle = this.colors[i] ;
+            this.ctx.fillText(k,this.X(22-2*i),this.Y(this.Y0+offset)) ;
+            this.ctx.fillText(k,this.X(22-2*i),this.Y(this.Y1-.5-offset)) ;
+        });
+    }
+    plot() {
+        this.ctx.lineWidth=5;
+        Object.keys(this.Ys).forEach( (k,i) => {
+            this.ctx.strokeStyle=this.colors[i] ;
+            this.Ys[k].forEach( xy => {
+                this.ctx.beginPath() ;
+                this.ctx.arc(this.X(xy[0]),this.Y(xy[1]),5,0,2*Math.PI);
+                this.ctx.stroke();
+            });
+        });
+    }
+    X(time) {
+        return this.padX + (time-this.X0)*this.scaleX ;
+    }
+    Y(temp) {
+        return this.padY + (this.Y1-temp)*this.scaleY ;
+    }
+}
+window.onload = () => {
     globalThis.dp = new AirDatepicker("#new_cal", {
             onSelect(x) {NewDate(x.date)},
             isMobile:true,
@@ -196,16 +325,17 @@ window.onload = () => {
     switch (globals.page_type) {
         case "stat":
             document.getElementById("stat").classList.add("disabled-link");
-            document.getElementById("table").classList.add("statTable");
-            CreateStatTable() ;
+            new Statistics().Show() ;
             break ;
         case "plot":
             document.getElementById("plot").classList.add("disabled-link");
+            document.getElementById("datastat").style.display="none";
+            document.getElementById("graph").style.display="block";
+            new Plot().Show();
             break ;
         default: // "data"
             document.getElementById("data").classList.add("disabled-link");
-            document.getElementById("table").classList.add("dataTable");
-            SortOn() ;
+            new Data().Show() ;
             break ;
     }
     

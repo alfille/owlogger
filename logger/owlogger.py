@@ -151,8 +151,6 @@ class OWLogServer(BaseHTTPRequestHandler):
         content_length = int(self.headers['Content-Length'])
         body_str = self.rfile.read(content_length)
         body = json.loads(body_str)
-#        self.send_response(200)
-#        self.end_headers()
         self._good_get()
         if debug:
             print("POST ",body)
@@ -204,7 +202,7 @@ class OWLogServer(BaseHTTPRequestHandler):
                 <a id="help" href="https://alfille.github.io/owlogger/" target="_blank" rel="noopener noreferrer">Help</a>
                 <a id="data" href="#" onclick="globalThis.NewType('data')">Data</a>
                 <a id="stat" href="#" onclick="globalThis.NewType('stat')">Stats</a>
-                <a id="plot" href="#" onclick="globalThis.NewType('plot')" class="disabled-link">Graph</a>
+                <a id="plot" href="#" onclick="globalThis.NewType('plot')">Graph</a>
                 <span id="date"></span>
                 <span></span>
                 <a id="statswap" href="#" onclick="globalThis.StatSwap()"></a>
@@ -216,9 +214,14 @@ class OWLogServer(BaseHTTPRequestHandler):
                 <span id="alt_cal"></span>
             </div>                    
             <div id='contentarea'>
-                <table id="table"></table>
-                <hr>
-                <a href="https://github.com/alfille/owlogger" target="_blank" rel="noopener noreferrer">OWLogger by Paul H Alfille 2025</a>
+                <div id="datastat">
+                    <table id="table"></table>
+                    <hr>
+                    <a href="https://github.com/alfille/owlogger" target="_blank" rel="noopener noreferrer">OWLogger by Paul H Alfille 2025</a>
+                </div>
+                <div id="graph" hidden>
+                    <canvas id="graphcanvas"></canvas>
+                </div>
             </div>
         </div>
     </body>

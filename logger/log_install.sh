@@ -82,7 +82,7 @@ cp -i owlogger.service /etc/systemd/system
 systemctl daemon-reexec
 systemctl daemon-reload
 systemctl enable owlogger.service
-systemctl start  owlogger.service
+systemctl restart  owlogger.service
 systemctl status --no-pager owlogger.service
 
 echo "OWLOGGER install process finished"
