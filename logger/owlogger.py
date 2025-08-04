@@ -197,32 +197,33 @@ class OWLogServer(BaseHTTPRequestHandler):
     <body>
         <div id='all'>
             <div id="toolbar">
-                <button id="reload" onclick="globalThis.NewDate(globals.daystart)">OWLogger</button>
-                <a id="today" href="#" onclick="globalThis.NewDate(new Date())">Today</a>
-                <a id="help" href="https://alfille.github.io/owlogger/" target="_blank" rel="noopener noreferrer">Help</a>
-                <a id="data" href="#" onclick="globalThis.NewType('data')">Data</a>
-                <a id="stat" href="#" onclick="globalThis.NewType('stat')">Stats</a>
-                <a id="plot" href="#" onclick="globalThis.NewType('plot')">Graph</a>
+                <a class="button" id="reload" href="https://alfille.github.io/owlogger/" target="_blank" rel="noopener noreferrer">OWLogger</a>
+                <a class="button" id="data" href="#" onclick="globalThis.NewType('data')">Data</a>
+                <a class="button" id="stat" href="#" onclick="globalThis.NewType('stat')">Stats</a>
+                <a class="button" id="plot" href="#" onclick="globalThis.NewType('plot')">Graph</a>
                 <span id="date"></span>
-                <span></span>
-                <a id="statswap" href="#" onclick="globalThis.StatSwap()"></a>
                 <span id="time"></span>
             </div>
             <div id="datebar" onclick="globalThis.dp.show()">
-                <button id='Ucal'> &#128467;</button>
+                <button id='Ucal'>&#128467;</button>
                 <input id='new_cal' type="text" size="10" readonly hidden>&nbsp;<span id="showdate"></span>
-                <span id="alt_cal"></span>
             </div>                    
             <div id='contentarea'>
-                <div id="datastat">
+                <div  class="non-plot">
                     <table id="table"></table>
-                    <hr>
-                    <a href="https://github.com/alfille/owlogger" target="_blank" rel="noopener noreferrer">OWLogger by Paul H Alfille 2025</a>
                 </div>
-                <div id="graph" hidden>
+                <div id="graph" class="yes-plot">
                     <canvas id="graphcanvas"></canvas>
                 </div>
             </div>
+            <div id="footer">
+                <div class="non-plot">
+                     <a id="bfooter" class="button" href="https://github.com/alfille/owlogger" target="_blank" rel="noopener noreferrer">OWLogger by Paul H Alfille 2025</a>
+                </div>
+                <div class="yes-plot">
+                    <div id="legend"></div>
+                </div>
+           </div>
         </div>
     </body>
     <script>

@@ -189,12 +189,12 @@ function TestDate(x) {
 }
 class Plot {
     constructor() {
-        const div = document.getElementById("graph") ;
+        const div = document.getElementById("contentarea") ;
         this.canvas = document.getElementById("graphcanvas");
 
-        this.canvas.width = div.clientWidth ;
+        this.canvas.width = div.offsetWidth ;
         this.width = this.canvas.width ;
-        this.canvas.height = div.clientHeight ;
+        this.canvas.height = div.offsetHeight ;
         this.height = this.canvas.height ;
         
         this.ctx = this.canvas.getContext('2d');
@@ -202,30 +202,56 @@ class Plot {
         if ( 'orientation' in screen ) {
             screen.orientation.addEventListener('change', () => NewType('plot') );
         }
+        this.colors=["red","darkorange","purple","green","darkgreen","pink","brown","darkgray","dodgerblue"];
     }
     Show() {
         this.data();
-        this.setup();
         this.legend();
+        this.setup();
         this.plot();
     }
     
     data() {
         this.Ys={};
-        this.maxY = -Infinity ;
-        this.minY = Infinity ;
+        this.select={};
         globals.dayData.forEach( row => {
             const time= ((row[0].match(/(\d+)/g))??["0"]).map(Number).reduceRight((t,x)=>x+t/60) ;
             const key = row[1] ;
             if ( !(key in this.Ys) ) {
                 this.Ys[key] = [] ;
+                this.select[key] = true;
             }
             const numbers = ((row[2].match(/-?(\d+\.?\d*|\.?\d+)/g))??[]).map(Number) ;
-            this.maxY = Math.max( ...numbers, this.maxY ) ;
-            this.minY = Math.min( ...numbers, this.minY ) ;
             numbers.forEach( n => this.Ys[key].push([time,n]));
         });
-
+    }
+    legend() {
+		const legend = document.getElementById("legend");
+		Object.keys(this.select).forEach( (key,i) =>{
+			const le = document.createElement("label");
+			le.style.color=this.colors[i];
+			le.innerText=key;
+			const ch = document.createElement("input");
+			ch.type="checkbox";
+			ch.style.color=this.colors[i];
+			ch.checked = this.select[key] ;
+			ch.onchange=()=>{
+				this.select[key]=ch.checked;
+				this.filter();
+				this.setup();
+				this.plot();
+			};
+			le.appendChild(ch);
+			legend.appendChild(le);
+		});
+    }
+    filter() {
+        this.maxY = -Infinity ;
+        this.minY = Infinity ;
+        Object.keys(this.select).filter(key=>this.select[key]).this.Ys[key].forEach( r=> {
+			this.maxY=Math.max(this.maxY,r[1]);
+			this.minY=Math.min(this.minY,r[1]);
+		});
         this.padX = 10;
         this.padY = 10 ;
         this.X0 = 0.;
@@ -234,9 +260,8 @@ class Plot {
         this.Y1 = Math.round( this.maxY + 1 );
         this.Y0 = Math.round( this.minY - 2 );
         this.scaleY = (this.height-2*this.padY)/(this.Y1-this.Y0) ;
-    }
+	}
     setup() {
-        this.colors=["red","darkorange","purple","green","darkgreen","pink","brown","darkgray","dodgerblue"];
         this.ctx.fillStyle = "white" ;
         this.ctx.fillRect(0,0,this.width,this.height) ;
         this.ctx.strokeStyle = "lightgray" ;
@@ -256,7 +281,7 @@ class Plot {
             this.ctx.lineTo( this.X(time),this.Y(this.Y1) ) ;
             this.ctx.stroke() ;
         }
-        this.ctx.lineWidth = 3 ;
+        this.ctx.lineWidth = 4 ;
         for ( let time = this.X0; time <= this.X1 ; time += 4 ) {
             // grid
             this.ctx.beginPath() ;
@@ -282,15 +307,6 @@ class Plot {
         for ( let time = this.X0+4; time < this.X1 ; time += 4 ) {
             this.ctx.fillText(Number(time).toFixed(0),this.X(time),this.height)
         }
-    }
-    legend() {
-        this.ctx.font = `${Math.round(this.scaleY/2)}px san serif` ;
-        Object.keys(this.Ys).forEach( (k,i)=> {
-            const offset = .5 * (i%2) ;
-            this.ctx.fillStyle = this.colors[i] ;
-            this.ctx.fillText(k,this.X(22-2*i),this.Y(this.Y0+offset)) ;
-            this.ctx.fillText(k,this.X(22-2*i),this.Y(this.Y1-.5-offset)) ;
-        });
     }
     plot() {
         this.ctx.lineWidth=5;
@@ -324,17 +340,14 @@ window.onload = () => {
     document.getElementById("showdate").innerHTML = globals.daystart.toLocaleDateString();
     switch (globals.page_type) {
         case "stat":
-            document.getElementById("stat").classList.add("disabled-link");
             new Statistics().Show() ;
             break ;
         case "plot":
-            document.getElementById("plot").classList.add("disabled-link");
-            document.getElementById("datastat").style.display="none";
-            document.getElementById("graph").style.display="block";
+            document.querySelectorAll(".non-plot").forEach( x=>x.style.display="none");
+            document.querySelectorAll(".yes-plot").forEach( x=>x.style.display="block");
             new Plot().Show();
             break ;
         default: // "data"
-            document.getElementById("data").classList.add("disabled-link");
             new Data().Show() ;
             break ;
     }
