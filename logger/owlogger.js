@@ -1,4 +1,4 @@
-class Stat {
+class Cumulative {
     constructor( name ) {
         this.lines = 0;
         this.name = name ;
@@ -46,9 +46,9 @@ class Stat {
         return this.name ;
     }
 }
-class StatList {
+class StatCalc {
     constructor( data ) {
-        this.all = new Stat("All") ;
+        this.all = new Cumulative("All") ;
         this.list = {} ;
         data.forEach( dline => this.addline(dline) );
     }
@@ -57,7 +57,7 @@ class StatList {
         this.all.add(numbers);
         const key = dline[1] ;
         if ( !(key in this.list) ) {
-            this.list[key] = new Stat(key) ;
+            this.list[key] = new Cumulative(key) ;
         }
         this.list[key].add(numbers);
     }
@@ -67,7 +67,7 @@ class StatList {
     Keys() {
         return Object.keys(this.list) ;
     }
-    Stat(key) {
+    Cumulative(key) {
         return this.list[key] ;
     }
 }
@@ -103,14 +103,14 @@ function YYYYMMDD(date) {
     return `${year}-${month}-${day}`;
 }
 function NewDate(date) {
-    const url = new URL(location.href);
-    url.searchParams.set('date', YYYYMMDD(date));
-    url.searchParams.set('type', globals.page_type);
-    location.assign(url.search);
+    NewWebPage( date, globals.page_type ) ;
 }
 function NewType(ntype) {
+    NewWebPage( globals.daystart, ntype ) ;
+}
+function NewWebPage(date,ntype) {
     const url = new URL(location.href);
-    url.searchParams.set('date', YYYYMMDD(globals.daystart));
+    url.searchParams.set('date', YYYYMMDD(date));
     url.searchParams.set('type', ntype);
     location.assign(url.search);
 }
@@ -124,7 +124,7 @@ class Data {
     Show() {
         this.table.classList.add("dataTable");
         this.SortOn() ;
-        this.CreateDataTable() ;
+        this.ShowDataTable() ;
     }          
     SortOn( column=null ){
         const so = sessionStorage.getItem("sortorder");
@@ -146,33 +146,45 @@ class Data {
         }
         sessionStorage.setItem("sortorder",JSON.stringify(sortorder));
     }
-    CreateDataTable() {
+    ShowDataTable() {
         const sym=(i,s0,s1)=>{
             if (i!=s0){return "&nbsp";}
             if ( s1>0){return "&uarr;";}
             return "&darr;";
         }
+        this.thead.innerHTML="";
+        this.tbody.innerHTML="";
         const sortorder = JSON.parse(sessionStorage.getItem("sortorder"));
-        ["Time","Source","Data"].forEach( (h,i) => this.thead.insertCell(-1).innerHTML=`<span onclick="SortOn(${i})"><B>${h}&nbsp;${sym(i,sortorder[0],sortorder[1])}</B></span>` );
-        globals.dayData.forEach( r => this.AddRow( r ) );
+        ["Time","Source","Data"].forEach( (h,i) => {
+            const t = this.thead.insertCell(-1) ;
+            t.innerHTML=`<B>${h}&nbsp;${sym(i,sortorder[0],sortorder[1])}</B>`;
+            t.onclick=()=>{
+                this.SortOn(i);
+                this.ShowDataTable();
+            };
+        });
+        globals.dayData.forEach( r => this.ShowRow( r ) );
     }
-    AddRow( row_data ) {
+    ShowRow( row_data ) {
         const row = this.tbody.insertRow(-1);
         row_data.forEach( d => row.insertCell(-1).innerHTML=d );
     }
 }
-class Statistics extends Data {
+class Stat extends Data {
     Show() {
         this.table.classList.add("statTable");
-        ["Source","Types","Values"].forEach( (h,i) => this.thead.insertCell(-1).innerHTML=`<B>${h}</B>` );
-        const statData = new StatList( globals.dayData ) ;
-        statData.Keys().map( k=> statData.Stat(k)).forEach( s => this.AddStat( s ) ) ;
-        this.AddStat( statData.All() );
+        this.statData = new StatCalc( globals.dayData ) ;
+        this.ShowStatTable();
     }                  
-    AddStat( stat ) {
-        this.AddRow( [`<B>${stat.Name()}</B>`, "Lines, Readings", `${stat.Lines()}, ${stat.N()}`]);
-        this.AddRow( ["", "Avg (Std)", (stat.N()==0)?"":`${stat.Avg().toFixed(2)} (${stat.Std().toFixed(2)})`]);
-        this.AddRow( ["", "Range", (stat.N()==0)?"":`${stat.Min()} &mdash; ${stat.Max()}`]);
+    ShowStatTable() {
+        ["Source","Types","Values"].forEach( (h,i) => this.thead.insertCell(-1).innerHTML=`<B>${h}</B>` );
+        this.statData.Keys().map( k=> this.statData.Cumulative(k)).forEach( s => this.ShowStat( s ) ) ;
+        this.ShowStat( this.statData.All() );
+    }                  
+    ShowStat( stat ) {
+        this.ShowRow( [`<B>${stat.Name()}</B>`, "Lines, Readings", `${stat.Lines()}, ${stat.N()}`]);
+        this.ShowRow( ["", "Avg (Std)", (stat.N()==0)?"":`${stat.Avg().toFixed(2)} (${stat.Std().toFixed(2)})`]);
+        this.ShowRow( ["", "Range", (stat.N()==0)?"":`${stat.Min()} &mdash; ${stat.Max()}`]);
     }
 }
 function TestDate(x) {
@@ -207,6 +219,7 @@ class Plot {
     Show() {
         this.data();
         this.legend();
+        this.filter();
         this.setup();
         this.plot();
     }
@@ -226,32 +239,34 @@ class Plot {
         });
     }
     legend() {
-		const legend = document.getElementById("legend");
-		Object.keys(this.select).forEach( (key,i) =>{
-			const le = document.createElement("label");
-			le.style.color=this.colors[i];
-			le.innerText=key;
-			const ch = document.createElement("input");
-			ch.type="checkbox";
-			ch.style.color=this.colors[i];
-			ch.checked = this.select[key] ;
-			ch.onchange=()=>{
-				this.select[key]=ch.checked;
-				this.filter();
-				this.setup();
-				this.plot();
-			};
-			le.appendChild(ch);
-			legend.appendChild(le);
-		});
+        const legend = document.getElementById("legend");
+        Object.keys(this.select).forEach( (key,i) =>{
+            const bu = document.createElement("button");
+            bu.style.backgroundColor=this.colors[i];
+            bu.classList.add("blegend");
+            bu.innerHTML=`&#9949;&nbsp${key}`;
+            bu.onclick=()=>{
+                if (this.select[key]) {
+                    bu.innerHTML=`&#9634;&nbsp;${key}`;
+                    this.select[key]=false;
+                } else {
+                    bu.innerHTML=`&#9949;&nbsp;${key}`;
+                    this.select[key]=true;
+                }
+                this.filter();
+                this.setup();
+                this.plot();
+            };
+            legend.appendChild(bu);
+        });
     }
     filter() {
         this.maxY = -Infinity ;
         this.minY = Infinity ;
-        Object.keys(this.select).filter(key=>this.select[key]).this.Ys[key].forEach( r=> {
-			this.maxY=Math.max(this.maxY,r[1]);
-			this.minY=Math.min(this.minY,r[1]);
-		});
+        Object.keys(this.select).filter(key=>this.select[key]).forEach( key=>this.Ys[key].forEach( r=> {
+            this.maxY=Math.max(this.maxY,r[1]);
+            this.minY=Math.min(this.minY,r[1]);
+        }));
         this.padX = 10;
         this.padY = 10 ;
         this.X0 = 0.;
@@ -260,7 +275,7 @@ class Plot {
         this.Y1 = Math.round( this.maxY + 1 );
         this.Y0 = Math.round( this.minY - 2 );
         this.scaleY = (this.height-2*this.padY)/(this.Y1-this.Y0) ;
-	}
+    }
     setup() {
         this.ctx.fillStyle = "white" ;
         this.ctx.fillRect(0,0,this.width,this.height) ;
@@ -305,18 +320,20 @@ class Plot {
         this.ctx.font = `${this.padX}px san serif` ;
         this.ctx.fillStyle = "gray" ;
         for ( let time = this.X0+4; time < this.X1 ; time += 4 ) {
-            this.ctx.fillText(Number(time).toFixed(0),this.X(time),this.height)
+            this.ctx.fillText(Number(time).toFixed(0),this.X(time),this.Y(this.Y0)+.5);
         }
     }
     plot() {
         this.ctx.lineWidth=5;
         Object.keys(this.Ys).forEach( (k,i) => {
-            this.ctx.strokeStyle=this.colors[i] ;
-            this.Ys[k].forEach( xy => {
-                this.ctx.beginPath() ;
-                this.ctx.arc(this.X(xy[0]),this.Y(xy[1]),5,0,2*Math.PI);
-                this.ctx.stroke();
-            });
+            if ( this.select[k] ) {
+                this.ctx.strokeStyle=this.colors[i] ;
+                this.Ys[k].forEach( xy => {
+                    this.ctx.beginPath() ;
+                    this.ctx.arc(this.X(xy[0]),this.Y(xy[1]),5,0,2*Math.PI);
+                    this.ctx.stroke();
+                });
+            }
         });
     }
     X(time) {
@@ -340,7 +357,9 @@ window.onload = () => {
     document.getElementById("showdate").innerHTML = globals.daystart.toLocaleDateString();
     switch (globals.page_type) {
         case "stat":
-            new Statistics().Show() ;
+            document.querySelectorAll(".non-plot").forEach( x=>x.style.display="block");
+            document.querySelectorAll(".yes-plot").forEach( x=>x.style.display="none");
+            new Stat().Show() ;
             break ;
         case "plot":
             document.querySelectorAll(".non-plot").forEach( x=>x.style.display="none");
@@ -348,6 +367,8 @@ window.onload = () => {
             new Plot().Show();
             break ;
         default: // "data"
+            document.querySelectorAll(".non-plot").forEach( x=>x.style.display="block");
+            document.querySelectorAll(".yes-plot").forEach( x=>x.style.display="blnoneock");
             new Data().Show() ;
             break ;
     }

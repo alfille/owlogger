@@ -109,6 +109,17 @@ body {
     border-radius:8px;
     cursor:pointer;
 }
+.blegend {
+    color:white;
+    padding:2px;
+    border:none;
+    display:inline-block;
+    font-size:.6em;
+    text-align:center;
+    text-decoration:none;
+    margin:2px;
+    cursor:pointer;
+}
 #reload {
     grid-area:reload; 
     background-color:blue; 
@@ -128,9 +139,6 @@ body {
 #time {
     grid-area:time;
 }
-#graph {
-    display:block;
-}
 .present {
     background-color: #e6ffe6;
 }
@@ -142,6 +150,7 @@ body {
 #graph {
     height:100%;
     width:100%;
+    display:block;
 }
 #footer {
     grid-area:footer;
@@ -177,5 +186,5 @@ td {
     display:block;
 }
 .yes-plot {
-    display:hidden;
+    display:none;
 }
