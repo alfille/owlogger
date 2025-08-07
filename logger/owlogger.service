@@ -2,6 +2,7 @@
 Description=OWLogger web server
 After=network.target caddy.service
 Requires=caddy.service
+BindsTo=caddy.service
 
 [Service]
 Type=simple

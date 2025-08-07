@@ -65,16 +65,14 @@ class OWLogServer(BaseHTTPRequestHandler):
         # needed for js and css
         match self.path:
             # check for permitted file requests (only a few carefully chosen)
-            case  "/air-datepicker.css" \
-                | "/air-datepicker.js"  \
-                | "/favicon.ico"        \
-                | "/owlogger.css"       \
+            case  "/air-datepicker.js"  \
                 | "/owlogger.js"        \
-                :      
-                with open(self.path.strip("/"),"rb") as f:
-                    self._good_get()
-                    self.wfile.write(f.read())
-                return
+                : return self.file_return("text/html")
+            case  "/air-datepicker.css" \
+                | "/owlogger.css"       \
+                : return self.file_return("text/css")
+            case  "/owlogger.css"       \
+                : return self.file_return("image/x-icon") 
 
         # test URL -- only queries allowed
         if len(self.path) > 1:
@@ -168,6 +166,19 @@ class OWLogServer(BaseHTTPRequestHandler):
     def _good_get( self ):
         self.send_response(200)
         self.send_header("Content-type", "text/html")
+        self.best_practice()
+
+    def file_return( self, ftype ):
+        self.send_response(200)
+        self.send_header("Content-type", ftype)
+        self.send_header("Cache-Control", "max-age=31536000")
+        self.best_practice()
+        with open(self.path.strip("/"),"rb") as f:
+            self.wfile.write(f.read())
+
+    def best_practice( self ):
+        self.send_header("X-Frame-Options", "SAMEORIGIN")
+        self.send_header("Cross-Origin-Opener-Policy", "same-origin")
         self.end_headers()
 
     def do_PUT(self):
@@ -188,19 +199,25 @@ class OWLogServer(BaseHTTPRequestHandler):
 
         # Generate HTML
         return f"""
-    <html>
+<!DOCTYPE html>
+<html lang="en">
     <head>
-        <title>Logger</title>
-        <link href="./owlogger.css" rel="stylesheet">
-        <link href="./air-datepicker.css" rel="stylesheet">
+        <meta charset="UTF-8">
+        <title>OWLogger</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="description" content="Display 1-wire sensor readings logged to a cloud server.">
+        <link rel="stylesheet" href="./owlogger.css" type="text/css">
+        <script src="./owlogger.js"></script>
+        <link href="./air-datepicker.css" rel="stylesheet" type="text/css" defer>
+        <script src="./air-datepicker.js" defer></script>
     </head>
     <body>
         <div id='all'>
             <div id="toolbar">
                 <a class="button" id="reload" href="https://alfille.github.io/owlogger/" target="_blank" rel="noopener noreferrer">OWLogger</a>
-                <a class="button" id="data" href="#" onclick="globalThis.NewType('data')">Data</a>
-                <a class="button" id="stat" href="#" onclick="globalThis.NewType('stat')">Stats</a>
-                <a class="button" id="plot" href="#" onclick="globalThis.NewType('plot')">Graph</a>
+                <a class="button" id="data" href="#" onclick="JumpTo.type('data')">Data</a>
+                <a class="button" id="stat" href="#" onclick="JumpTo.type('stat')">Stats</a>
+                <a class="button" id="plot" href="#" onclick="JumpTo.type('plot')">Graph</a>
                 <span id="date"></span>
                 <span id="time"></span>
             </div>
@@ -238,8 +255,6 @@ class OWLogServer(BaseHTTPRequestHandler):
             header_time:"{datetime.datetime.now().strftime("%H:%M")}",
             }}
     </script>
-    <script src="./owlogger.js"></script>
-    <script src="./air-datepicker.js"></script>
 </html>"""
         
     def _send_auth_challenge(self):

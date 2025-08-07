@@ -1,11 +1,18 @@
+/* owlogger
+ * one-wire logging
+ * See https://github.con/alfille/owlogger
+ * Paul H Alfille 2025 MIT licence */
+
+/* jshint esversion: 11 */
+
 class Cumulative {
     constructor( name ) {
         this.lines = 0;
         this.name = name ;
         //  Calculation from Wikipedia article
         this.n = 0;
-        this.Q = 0.;
-        this.A = 0.;
+        this.Q = 0;
+        this.A = 0;
         this.max = null ;
         this.min = null ;
     }
@@ -13,7 +20,7 @@ class Cumulative {
         this.lines += 1;
         lines.forEach( x => {
             this.n += 1 ;
-            this.Q += (this.n-1)*(x-this.A)**2/this.n
+            this.Q += (this.n-1)*(x-this.A)**2/this.n ;
             this.A += (x-this.A)/this.n ;
             if ( this.n == 1 ) {
                 this.max = x ;
@@ -88,31 +95,33 @@ class Swipe {
         if ( Math.abs(deltaY) < this.thresholdY ) {
             if ( deltaX > this.thresholdX ) {
                 let copy = new Date(globals.daystart.valueOf());
-                NewDate( new Date(copy.setDate(copy.getDate()-1)) );
+                JumpTo.date( new Date(copy.setDate(copy.getDate()-1)) );
             } else if ( deltaX < -this.thresholdX ) {
                 let copy = new Date(globals.daystart.valueOf());
-                NewDate( new Date(copy.setDate(copy.getDate()+1)) );
+                JumpTo.date( new Date(copy.setDate(copy.getDate()+1)) );
             }
         }
     }
 }
-function YYYYMMDD(date) {
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-function NewDate(date) {
-    NewWebPage( date, globals.page_type ) ;
-}
-function NewType(ntype) {
-    NewWebPage( globals.daystart, ntype ) ;
-}
-function NewWebPage(date,ntype) {
-    const url = new URL(location.href);
-    url.searchParams.set('date', YYYYMMDD(date));
-    url.searchParams.set('type', ntype);
-    location.assign(url.search);
+class JumpTo {
+    static YYYYMMDD(date) {
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    static date(date) {
+        this.jump( date, globals.page_type ) ;
+    }
+    static type(ntype) {
+        this.jump( globals.daystart, ntype ) ;
+    }
+    static jump(date,ntype) {
+        const url = new URL(location.href);
+        url.searchParams.set('date', this.YYYYMMDD(date));
+        url.searchParams.set('type', ntype);
+        location.assign(url.search);
+    }
 }
 class Data {
     constructor() {
@@ -151,7 +160,7 @@ class Data {
             if (i!=s0){return "&nbsp";}
             if ( s1>0){return "&uarr;";}
             return "&darr;";
-        }
+        };
         this.thead.innerHTML="";
         this.tbody.innerHTML="";
         const sortorder = JSON.parse(sessionStorage.getItem("sortorder"));
@@ -187,34 +196,21 @@ class Stat extends Data {
         this.ShowRow( ["", "Range", (stat.N()==0)?"":`${stat.Min()} &mdash; ${stat.Max()}`]);
     }
 }
-function TestDate(x) {
-    switch (x.cellType) {
-        case 'day':
-            return globals.goodDays.includes(YYYYMMDD(x.date));
-        case 'month':
-            return globals.goodMonths.includes(YYYYMMDD(x.date));
-        case 'year':
-            return globals.goodYears.includes(YYYYMMDD(x.date));
-        default:
-            return false;
-    }
-}
 class Plot {
     constructor() {
         const div = document.getElementById("contentarea") ;
         this.canvas = document.getElementById("graphcanvas");
 
-        this.canvas.width = div.offsetWidth ;
+        this.canvas.width = div.clientWidth ;
         this.width = this.canvas.width ;
-        this.canvas.height = div.offsetHeight ;
+        this.canvas.height = div.clientHeight ;
         this.height = this.canvas.height ;
         
         this.ctx = this.canvas.getContext('2d');
-        
         if ( 'orientation' in screen ) {
-            screen.orientation.addEventListener('change', () => NewType('plot') );
+            screen.orientation.addEventListener('change', () => JumpTo.type('plot') );
         }
-        this.colors=["red","darkorange","purple","green","darkgreen","pink","brown","darkgray","dodgerblue"];
+        this.colors=["#c20000","#3564B1","#7e00c2","#007031","#B33E00","#5D7000","#1700c2","#006f9e","#c20067"];
     }
     Show() {
         this.data();
@@ -268,9 +264,9 @@ class Plot {
             this.minY=Math.min(this.minY,r[1]);
         }));
         this.padX = 10;
-        this.padY = 10 ;
-        this.X0 = 0.;
-        this.X1 = 24.;
+        this.padY = 10;
+        this.X0 = 0;
+        this.X1 = 24;
         this.scaleX = (this.width-2*this.padX)/(this.X1-this.X0) ;
         this.Y1 = Math.round( this.maxY + 1 );
         this.Y0 = Math.round( this.minY - 2 );
@@ -280,59 +276,64 @@ class Plot {
         this.ctx.fillStyle = "white" ;
         this.ctx.fillRect(0,0,this.width,this.height) ;
         this.ctx.strokeStyle = "lightgray" ;
+        
         this.ctx.lineWidth = 1 ;
+        this.ctx.beginPath() ;
         for ( let time = this.X0; time <= this.X1 ; time += 1 ) {
-            // grid
-            this.ctx.beginPath() ;
+            // vert
             this.ctx.moveTo( this.X(time),this.Y(this.Y0) ) ;
             this.ctx.lineTo( this.X(time),this.Y(this.Y1) ) ;
-            this.ctx.stroke() ;
         }
-        this.ctx.lineWidth = 2 ;
-        for ( let time = this.X0; time <= this.X1 ; time += 2 ) {
-            // grid
-            this.ctx.beginPath() ;
-            this.ctx.moveTo( this.X(time),this.Y(this.Y0) ) ;
-            this.ctx.lineTo( this.X(time),this.Y(this.Y1) ) ;
-            this.ctx.stroke() ;
-        }
-        this.ctx.lineWidth = 4 ;
-        for ( let time = this.X0; time <= this.X1 ; time += 4 ) {
-            // grid
-            this.ctx.beginPath() ;
-            this.ctx.moveTo( this.X(time),this.Y(this.Y0) ) ;
-            this.ctx.lineTo( this.X(time),this.Y(this.Y1) ) ;
-            this.ctx.stroke() ;
-        }
-        this.ctx.lineWidth = 1 ;
         for ( let temp = this.Y0; temp <= this.Y1 ; temp += 1 ) {
-            // grid
-            this.ctx.beginPath() ;
+            // horz
             this.ctx.moveTo( this.X(this.X0),this.Y(temp) ) ;
             this.ctx.lineTo( this.X(this.X1),this.Y(temp) ) ;
-            this.ctx.stroke() ;
         }
-        this.ctx.font = `${Math.round(this.scaleY/2)}px san serif` ;
+        this.ctx.stroke() ;
+        
+        this.ctx.lineWidth = 2 ;
+        this.ctx.beginPath() ;
+        for ( let time = this.X0; time <= this.X1 ; time += 2 ) {
+            // 2 hr
+            this.ctx.moveTo( this.X(time),this.Y(this.Y0) ) ;
+            this.ctx.lineTo( this.X(time),this.Y(this.Y1) ) ;
+        }
+        this.ctx.stroke() ;
+        
+        this.ctx.lineWidth = 4 ;
+        this.ctx.beginPath() ;
+        for ( let time = this.X0; time <= this.X1 ; time += 4 ) {
+            // 4 hr
+            this.ctx.moveTo( this.X(time),this.Y(this.Y0) ) ;
+            this.ctx.lineTo( this.X(time),this.Y(this.Y1) ) ;
+        }
+        this.ctx.stroke() ;
+        
+        this.ctx.font = `${this.scaleY/2}px san serif` ;
         this.ctx.fillStyle = "gray" ;
         for ( let temp = this.Y0; temp <= this.Y1 ; temp += 1 ) {
-            this.ctx.fillText(Number(temp).toFixed(0),this.X(this.X0),this.Y(temp))
+            this.ctx.fillText(Number(temp).toFixed(0),this.X(this.X0),this.Y(temp)) ;
         }
-        this.ctx.font = `${this.padX}px san serif` ;
+        this.ctx.font = `${this.scaleX}px san serif` ;
         this.ctx.fillStyle = "gray" ;
         for ( let time = this.X0+4; time < this.X1 ; time += 4 ) {
-            this.ctx.fillText(Number(time).toFixed(0),this.X(time),this.Y(this.Y0)+.5);
+            this.ctx.fillText(Number(time).toFixed(0),this.X(time),this.Y(this.Y0)+0.5);
         }
     }
     plot() {
-        this.ctx.lineWidth=5;
+        this.ctx.lineWidth=3;
         Object.keys(this.Ys).forEach( (k,i) => {
             if ( this.select[k] ) {
                 this.ctx.strokeStyle=this.colors[i] ;
+                this.ctx.lineWidth=3;
+                this.ctx.beginPath() ;
                 this.Ys[k].forEach( xy => {
-                    this.ctx.beginPath() ;
-                    this.ctx.arc(this.X(xy[0]),this.Y(xy[1]),5,0,2*Math.PI);
-                    this.ctx.stroke();
+                    const x = this.X(xy[0]);
+                    const y = this.Y(xy[1]);
+                    this.ctx.moveTo(x,y);
+                    this.ctx.arc(x,y,4,0,2*Math.PI);
                 });
+                this.ctx.stroke();
             }
         });
     }
@@ -344,14 +345,26 @@ class Plot {
     }
 }
 window.onload = () => {
+    function TestDate(x) {
+        switch (x.cellType) {
+            case 'day':
+                return globals.goodDays.includes(JumpTo.YYYYMMDD(x.date));
+            case 'month':
+                return globals.goodMonths.includes(JumpTo.YYYYMMDD(x.date));
+            case 'year':
+                return globals.goodYears.includes(JumpTo.YYYYMMDD(x.date));
+            default:
+                return false;
+        }
+    }
     globalThis.dp = new AirDatepicker("#new_cal", {
-            onSelect(x) {NewDate(x.date)},
+            onSelect(x) {JumpTo.date(x.date)},
             isMobile:true,
-            buttons:[{content:'Today',onClick:(dp)=>NewDate(new Date())}],
+            buttons:[{content:'Today',onClick:(dp)=>JumpTo.date(new Date())}],
             selectedDates:[globals.daystart],
             onRenderCell(x) { if (TestDate(x)) { return {classes:'present'};} },
     } ) ;
-    var swipe = new Swipe() ;
+    new Swipe() ;
     document.getElementById("date").innerHTML = globals.header_date;
     document.getElementById("time").innerHTML = globals.header_time;
     document.getElementById("showdate").innerHTML = globals.daystart.toLocaleDateString();
@@ -368,10 +381,8 @@ window.onload = () => {
             break ;
         default: // "data"
             document.querySelectorAll(".non-plot").forEach( x=>x.style.display="block");
-            document.querySelectorAll(".yes-plot").forEach( x=>x.style.display="blnoneock");
+            document.querySelectorAll(".yes-plot").forEach( x=>x.style.display="none");
             new Data().Show() ;
             break ;
-    }
-    
-}
-
+    } 
+} ;
