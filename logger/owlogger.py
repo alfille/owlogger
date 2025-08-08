@@ -572,7 +572,11 @@ def main(sysargs):
 
     # Handle server address
     (addr,port) = server_tuple( args.server, default_port )
-    webServer = HTTPServer((addr, port), OWLogServer)
+    try:
+        webServer = HTTPServer((addr, port), OWLogServer)
+    except OSError as e:
+        print( f"Could start web server at {addr}:{port} -- {e}" )
+        sys.exit(1)
     print(f"Server started {addr}:{port}")
 
     OWLogServer.db = Database(args.database)
