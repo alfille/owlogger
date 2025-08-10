@@ -2,7 +2,7 @@
 # in TOML format https://toml.io/en/
 #
 # Normally resides in /etc/owlogger/owpost.toml
-# used for owpost.py and generalpost.py
+# used for owpost.py
 #
 # See https://github.com/alfille/owlogger
 
@@ -12,7 +12,7 @@
 # usually a valid subdomain address
 #server=owlogger.mypvs.net
 
-# for testing if owlogger in running on same machine:
+# for testing if owlogger is running on same machine:
 server="http://localhost:8001"
 
 # owserver location (internal)
@@ -36,6 +36,6 @@ Fahenheit=true
 # debugging output (for testing)
 debug=false
 
-# period
+# period in minutes
 # better done in systemd or cron!
 #period=15

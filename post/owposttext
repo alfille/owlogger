@@ -1,4 +1,0 @@
-#!/bin/bash
-# Script to run owposttext
-
-/usr/bin/python3 /usr/local/lib/owlogger/owposttext.py "$@"

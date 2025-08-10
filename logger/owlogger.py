@@ -575,7 +575,7 @@ def main(sysargs):
     try:
         webServer = HTTPServer((addr, port), OWLogServer)
     except OSError as e:
-        print( f"Could start web server at {addr}:{port} -- {e}" )
+        print( f"Could not start web server at {addr}:{port} -- {e}" )
         sys.exit(1)
     print(f"Server started {addr}:{port}")
 

@@ -100,7 +100,7 @@ def main(sysargs):
     parser = argparse.ArgumentParser(
         add_help=False
         )
-    
+        
     config = "/etc/owlogger/owpost.toml"
     # config
     parser.add_argument("--config",
@@ -113,7 +113,7 @@ def main(sysargs):
         )
     args, remaining_argv = parser.parse_known_args()
 
-    # Process TOML
+    # Process TOML to get those baseline values
     # TOML file
     toml = read_toml( args )
 
@@ -131,12 +131,12 @@ def main(sysargs):
         dest="token",
         type=str,
         nargs='?',
-        help='Secret token to authentificate message (optonal arbitrary text string)'
+        help='Secret token to authentificate message (optonal arbitrary text string) Must match the owlogger token.'
         )
 
     # Server address
     default_port = 8001
-    server = f"localhost:{default_port}"
+    server = f"http://localhost:{default_port}"
     parser.add_argument('-s','--server',
         required=False,
         default=toml.get("server",server),
@@ -184,6 +184,14 @@ def main(sysargs):
         help=f'Optional name for data source. Default owpost'
         )
         
+    # message
+    parser.add_argument('-m','--message',
+        required=False,
+        dest="message",
+        nargs='+',
+        help='Message to send instead of 1-wire data. Can be data from another source.'
+        )
+        
     # periodic
     parser.add_argument('-p','--period',
         required=False,
@@ -224,6 +232,18 @@ def main(sysargs):
         temp_scale=protocol.FLG_TEMP_C
     else:
         temp_scale=protocol.FLG_TEMP_F
+
+    # message entry skips 1-wire and periodic loop
+    if "message" in args and args.message !=None:
+        print(args.message)
+        print( f"Args Message: {' '.join(args.message)}" )
+        server.upload(' '.join(args.message))
+        return
+    if "message" in toml and toml.message != None:
+        print(toml.message)
+        print( f"Toml Message: {' '.join(toml.message)}" )
+        server.upload(' '.join(toml.message))
+        return
 
     #
     # create owserver proxy object
