@@ -2,7 +2,7 @@
 # owlogger.py
 #
 # HTTP server program for logging data and serving pages
-# Uses putter.py on data upload side
+# Uses owpost.py on data upload side
 # Stores data in sqlite3
 #
 # by Paul H Alfille 2025
@@ -445,18 +445,18 @@ def read_toml( args ):
             toml={}
     return toml
 
-def server_tuple( server_string, default_port ):
+def address_tuple( address_string, default_port ):
     # takes a server string in a variety of formats and returns the bare needed components
     
     # Handle server address
-    server = server_string
+    address = address_string
     
     # Add http:// for url processing even though it's not poart of the final result
-    if server.find("//") == -1:
-        server = f"http://{server}"
+    if address.find("//") == -1:
+        address = f"http://{address}"
     
     # url parse and extract port
-    u = urllib.parse.urlparse(server)
+    u = urllib.parse.urlparse(address)
     port = u.port
     if port==None:
         port = default_port
@@ -503,14 +503,14 @@ def main(sysargs):
 
     # Server address
     default_port = 8001
-    server = f"localhost:{default_port}"
-    parser.add_argument('-s','--server',
+    address = f"localhost:{default_port}"
+    parser.add_argument('-a','--address',
         required=False,
-        default=toml.get("server",server),
-        dest="server",
+        default=toml.get("address",address),
+        dest="address",
         nargs='?',
         type=str,
-        help=f'Server IP address and port (optional) default={server}'
+        help=f'Server IP address and port (optional) default={address}'
         )
         
     # secret token for JWT authentification
@@ -571,7 +571,7 @@ def main(sysargs):
     OWLogServer.no_password = args.no_password
 
     # Handle server address
-    (addr,port) = server_tuple( args.server, default_port )
+    (addr,port) = address_tuple( args.address, default_port )
     try:
         webServer = HTTPServer((addr, port), OWLogServer)
     except OSError as e:

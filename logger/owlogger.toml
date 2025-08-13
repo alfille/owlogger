@@ -5,9 +5,9 @@
 # used for owlogger.py and owlog_user.py
 #
 
-# this server location
+# this server address
 #  for reverse-proxy protection (caddy)
-server="http://localhost:8001"
+address="http://localhost:8001"
 
 # database for logging (sqlite3 format)
 database="/var/lib/owlogger/logger_data.db"
