@@ -29,6 +29,7 @@
   - [Serial](./serial1wire.md)
   - [GPIO direct hardware](./gpio1wire.md)
   - [Network](./network1wire.md)
+- [ESP32](./esp32.md)
 - [ADVANCED](./advanced.md)
   - [Database](./database.md)
   - [Customize](./customize.md)
