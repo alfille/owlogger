@@ -89,7 +89,7 @@ def main(sysargs):
         sys.exit(1)
         
     # temperature flag
-    inC = toml.Celsius or not toml.Fahrenheit:
+    inC = (toml.Celsius) || (not toml.Fahrenheit):
         
     # onewire
     ow = onewire.OneWire( machine.Pin(toml.pin))
