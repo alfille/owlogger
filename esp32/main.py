@@ -80,7 +80,7 @@ def main(sysargs):
     # Server (external data collector)
     # Take server string as is. Can be http, https or anything that the reverse proxy can manage (perhaps a branch)
     if 'server' in toml:
-        if `token` in toml:
+        if 'token' in toml:
             server = Transmit( toml.server, toml.name, toml.wifi, toml.token )
         else:
             server = Transmit( toml.server, toml.name, toml.wifi, None )
