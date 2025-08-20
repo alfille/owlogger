@@ -13,13 +13,19 @@ import urequests
 import tomli
 import ujwt
 
-----------
+#----------
 
 class Transmit:
-    def __init__(self, server, name, token):
+    def __init__(self, server, name, wifi, token):
         self.server = server
         self.name = name
-        
+		self.wlan = network.WLAN()
+		self.wlan.active(True)
+		self.wlan.config( reconnects=3)
+		
+		self.wifi = wifi
+		self.wifi_index = 0
+
         # JWT token?
         if token == None:
             self.headers = { "Content-Type": "application/text"}
@@ -28,6 +34,14 @@ class Transmit:
             self.headers = { 'Authorization': f'Bearer {secret}', 'Content-Type': 'application/text'}
             
     def upload( self, data_string ):
+		index = self.wifi_index
+		while not self.wlan.isconnected():
+			self.wlan.connect( self.wifi[self.wifi_index].ssid, self.wifi[self.wifi_index].password )
+			if self.wlan.isconnected():
+				break
+			self.wifi_index = (self.wifi_index + 1) % len(wifi)
+			if self.wifi_index == index:
+				machine.idle()
         data = json.dumps( {'data': data_string, 'name':self.name } )
         self.post( data )
 
@@ -59,17 +73,21 @@ def main(sysargs):
 
     toml = read_toml()
 
+	if 'WIFI' not in toml:
+		print("No Wifi settings in TOML file")
+		sys.exit(1)
+
     # Server (external data collector)
     # Take server string as is. Can be http, https or anything that the reverse proxy can manage (perhaps a branch)
 	if 'server' in toml:
 		if `token` in toml:
-			server = Transmit( toml.server, toml.name, toml.token )
+			server = Transmit( toml.server, toml.name, toml.wifi, toml.token )
 		else:
-			server = Transmit( toml.server, toml.name, None )
+			server = Transmit( toml.server, toml.name, toml.wifi, None )
 	else:
 		print("No server in TOML file")
 		sys.exit(1)
-
+		
     # temperature flag
     inC = toml.Celsius or not toml.Fahrenheit:
 		
