@@ -105,6 +105,7 @@ def main(sysargs):
         time.sleep_ms(750)
         temperatures=[ds.read_temp(rom) for rom in roms]
         if not inC:
+			# Farhenheit conversion
 			temperatures = [9*T/5+32 for T in temperatures]
         if len(temperatures)>0:
             temperature_string = " ".join([f"T {t:.2f}" for t in temperatures])
