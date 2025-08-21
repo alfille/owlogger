@@ -1,3 +1,10 @@
+#########
+## NOTE #
+# 1. Copy to owesp32.toml
+# 2. Edit your specifics (server, wifi, token, etc
+# 3. Upload with rest of files to ESP32 device
+#########
+
 # ESP32 configuration file for owlogger client
 # in TOML format https://toml.io/en/
 #
@@ -10,7 +17,7 @@
 #server=https://owlogger.mypvs.net
 
 # onewire
-# io pin configured for 1-wire
+# physical gpio pin configured for 1-wire
 pin=12
 
 # name

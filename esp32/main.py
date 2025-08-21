@@ -46,7 +46,8 @@ class Transmit:
         data = json.dumps( {'data': data_string, 'name':self.name } )
         self.post( data )
 
-    def post( self, data ): 
+    def post( self, data ):
+        print(f"Sending {data}") 
         try:
             response = urequests.post( self.server, data=data, headers=self.headers )
         except Exception as e:
@@ -94,13 +95,16 @@ def main(sysargs):
     inC = (toml.Celsius) or (not toml.Fahrenheit)
         
     # onewire
-    ow = onewire.OneWire( machine.Pin(toml.pin))
-    ds = ds18x20.DS18x20(ow)
+    try:
+        ow = onewire.OneWire( machine.Pin(toml.pin))
+        ds = ds18x20.DS18x20(ow)
+    except Exception as e:
+        print(f"Onewire connection problem ERROR: {e}" )
+        sys.exit(1)
 
     # Loop
     while True:
         # Get Temperatures
-        no_data = True
         temperatures = []
         roms = ds.scan()
         ds.conver_temp()
@@ -110,13 +114,9 @@ def main(sysargs):
             # Farhenheit conversion
             temperatures = [9*T/5+32 for T in temperatures]
         if len(temperatures)>0:
-            temperature_string = " ".join([f"T {t:.2f}" for t in temperatures])
-            no_data = False
-            
-        if no_data:
-            server.upload( "no data" )
+            server.upload( " ".join([f"T {t:.2f}" for t in temperatures]) )
         else:
-            server.upload( temperature_string )
+            server.upload( "no data" )
 
         # delay and repeat
         time.sleep( 60*toml.period )
