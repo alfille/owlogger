@@ -97,7 +97,7 @@ def main(sysargs):
     # onewire
     try:
         ow = onewire.OneWire( machine.Pin(toml['pin']))
-        ds = ds18x20.DS18x20(ow)
+        ds = ds18x20.DS18X20(ow)
     except Exception as e:
         print(f"Onewire connection problem ERROR: {e}" )
         sys.exit(1)
@@ -107,7 +107,7 @@ def main(sysargs):
         # Get Temperatures
         temperatures = []
         roms = ds.scan()
-        ds.conver_temp()
+        ds.convert_temp()
         time.sleep_ms(750)
         temperatures=[ds.read_temp(rom) for rom in roms]
         if not inC:
