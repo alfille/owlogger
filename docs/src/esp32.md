@@ -63,7 +63,7 @@ Use `mpremote` to talk to ESP device
 * tomli
   * [micropython version](https://github.com/BrianPugh/micropython-tomli)
   * Using suggested shortcut with no datetime needed of _parser.py -> tomli.py
-* ujwt
-  * From [Miguel Grinberg](https://gist.github.com/miguelgrinberg/400955ef03169d0a523fb1a2bd133a77)
+* jwt and hmac
+  * From [Miguel Grinberg](https://github.com/miguelgrinberg/microdot/tree/main/libs/micropython)
 
 

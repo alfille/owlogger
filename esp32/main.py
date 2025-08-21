@@ -73,8 +73,9 @@ def main(sysargs):
     # TOML file
 
     toml = read_toml()
+    print("configuration",toml)
 
-    if 'WIFI' not in toml:
+    if 'wifi' not in toml:
         print("No Wifi settings in TOML file")
         sys.exit(1)
 
