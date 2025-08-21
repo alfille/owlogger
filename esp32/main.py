@@ -84,19 +84,19 @@ def main(sysargs):
     # Take server string as is. Can be http, https or anything that the reverse proxy can manage (perhaps a branch)
     if 'server' in toml:
         if 'token' in toml:
-            server = Transmit( toml.server, toml.name, toml.wifi, toml.token )
+            server = Transmit( toml['server'], toml['name'], toml['wifi'], toml['token'] )
         else:
-            server = Transmit( toml.server, toml.name, toml.wifi, None )
+            server = Transmit( toml['server'], toml['name'], toml['wifi'], None )
     else:
         print("No server in TOML file")
         sys.exit(1)
         
     # temperature flag
-    inC = (toml.Celsius) or (not toml.Fahrenheit)
+    inC = (toml['Celsius']) or (not toml['Fahrenheit'])
         
     # onewire
     try:
-        ow = onewire.OneWire( machine.Pin(toml.pin))
+        ow = onewire.OneWire( machine.Pin(toml['pin']))
         ds = ds18x20.DS18x20(ow)
     except Exception as e:
         print(f"Onewire connection problem ERROR: {e}" )
@@ -119,7 +119,7 @@ def main(sysargs):
             server.upload( "no data" )
 
         # delay and repeat
-        time.sleep( 60*toml.period )
+        time.sleep( 60*toml['period'] )
         
 
 if __name__ == "__main__":
