@@ -11,7 +11,8 @@ import ds18x20
 import urequests
 
 import tomli
-import ujwt
+import hmac
+import jwt
 
 #----------
 
@@ -30,7 +31,7 @@ class Transmit:
         if token == None:
             self.headers = { "Content-Type": "application/text"}
         else:
-            secret = ujwt.encode( {'name':self.name},token,algorithm='HS256')
+            secret = jwt.encode( {'name':self.name},token,algorithm='HS256')
             self.headers = { 'Authorization': f'Bearer {secret}', 'Content-Type': 'application/text'}
             
     def upload( self, data_string ):
