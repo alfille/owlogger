@@ -20,7 +20,7 @@ class Transmit:
     def __init__(self, server, name, wifi, token):
         self.server = server
         self.name = name
-        self.wlan = network.WLAN()
+        self.wlan = network.WLAN(network.STA_IF)
         self.wlan.active(True)
         self.wlan.config( reconnects=3)
         
@@ -37,9 +37,13 @@ class Transmit:
     def upload( self, data_string ):
         index = self.wifi_index
         while not self.wlan.isconnected():
-            self.wlan.connect( self.wifi[self.wifi_index]['ssid'], self.wifi[self.wifi_index]['password'] )
-            if self.wlan.isconnected():
-                break
+            try:
+                print(f"Attempting wifi {self.wifi_index}: {self.wifi_index]['ssid']} / {self.wifi[self.wifi_index]['password']}")
+                self.wlan.connect( self.wifi[self.wifi_index]['ssid'], self.wifi[self.wifi_index]['password'] )
+                if self.wlan.isconnected():
+                    break
+            except: Exception as e:
+                print(f"WIFI error {e}")
             self.wifi_index = (self.wifi_index + 1) % len(self.wifi)
             if self.wifi_index == index:
                 machine.idle()
