@@ -41,9 +41,8 @@ class Transmit:
             try:
                 print(f"Attempting wifi {self.wifi_index} {self.wifi[self.wifi_index]['ssid']} / {self.wifi[self.wifi_index]['password']}")
                 self.wlan.connect( self.wifi[self.wifi_index]['ssid'], self.wifi[self.wifi_index]['password'] )
-                time.sleep(1)
-                for tries in range(0,5):
-                    machine.idle()
+                for tries in range(0,10):
+                    time.sleep(1)
                     if self.wlan.isconnected():
                         break
             except Exception as e:
