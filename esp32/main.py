@@ -37,7 +37,7 @@ class Transmit:
     def upload( self, data_string ):
         index = self.wifi_index
         while not self.wlan.isconnected():
-            self.wlan.connect( self.wifi[self.wifi_index].ssid, self.wifi[self.wifi_index].password )
+            self.wlan.connect( self.wifi[self.wifi_index]['ssid'], self.wifi[self.wifi_index]['password'] )
             if self.wlan.isconnected():
                 break
             self.wifi_index = (self.wifi_index + 1) % len(wifi)
