@@ -42,7 +42,7 @@ class Transmit:
                 self.wlan.connect( self.wifi[self.wifi_index]['ssid'], self.wifi[self.wifi_index]['password'] )
                 if self.wlan.isconnected():
                     break
-            except: Exception as e:
+            except Exception as e:
                 print(f"WIFI error {e}")
             self.wifi_index = (self.wifi_index + 1) % len(self.wifi)
             if self.wifi_index == index:
