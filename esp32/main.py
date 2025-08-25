@@ -40,7 +40,7 @@ class Transmit:
             self.wlan.connect( self.wifi[self.wifi_index]['ssid'], self.wifi[self.wifi_index]['password'] )
             if self.wlan.isconnected():
                 break
-            self.wifi_index = (self.wifi_index + 1) % len(wifi)
+            self.wifi_index = (self.wifi_index + 1) % len(self.wifi)
             if self.wifi_index == index:
                 machine.idle()
         data = json.dumps( {'data': data_string, 'name':self.name } )
