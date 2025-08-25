@@ -15,6 +15,7 @@ import hmac
 import jwt
 
 #----------
+server = None
 
 class Transmit:
     def __init__(self, server, name, wifi, token):
@@ -57,6 +58,13 @@ class Transmit:
             response = urequests.post( self.server, data=data, headers=self.headers )
         except Exception as e:
             print( f"{data} to {self.server} Error: {e}" ) 
+    
+    def close( self ):
+        try:
+            self.wlan.disconnect()
+        except Exception as e:
+            print(f"Disconnect error {e}")
+        self.wlan.acative=False
 
 def read_toml():
     try:
@@ -72,15 +80,7 @@ def read_toml():
     toml.setdefault('period'     , 15     );
     return toml
 
-def main(sysargs):
-    # Look for a config file location (else default) 
-    # read it in TOML format
-    # Process TOML to get those baseline values
-    # TOML file
-
-    toml = read_toml()
-    print("configuration",toml)
-
+def run(toml):
     if 'wifi' not in toml:
         print("No Wifi settings in TOML file")
         sys.exit(1)
@@ -125,7 +125,21 @@ def main(sysargs):
 
         # delay and repeat
         time.sleep( 60*toml['period'] )
-        
+
+def main(sysargs):
+    # Look for a config file location (else default) 
+    # read it in TOML format
+    # Process TOML to get those baseline values
+    # TOML file
+
+    toml = read_toml()
+    print("configuration",toml)
+
+    try:
+        run(toml)
+    except KeyboardInterupt:
+        if server:
+            server.close()
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
