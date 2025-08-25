@@ -36,22 +36,19 @@ class Transmit:
             self.headers = { 'Authorization': f'Bearer {secret}', 'Content-Type': 'application/text'}
             
     def upload( self, data_string ):
-        index = self.wifi_index
         self.wlan.active(True)
-        tries = 0
         while not self.wlan.isconnected():
             try:
-                tries += 1
-                print(f"Attempting wifi {self.wifi_index}:{tries} {self.wifi[self.wifi_index]['ssid']} / {self.wifi[self.wifi_index]['password']}")
+                print(f"Attempting wifi {self.wifi_index} {self.wifi[self.wifi_index]['ssid']} / {self.wifi[self.wifi_index]['password']}")
                 self.wlan.connect( self.wifi[self.wifi_index]['ssid'], self.wifi[self.wifi_index]['password'] )
-                machine.idle()
-                if self.wlan.isconnected():
-                    break
+                time.sleep(1)
+                for tries in range(0,5):
+                    machine.idle()
+                    if self.wlan.isconnected():
+                        break
             except Exception as e:
                 print(f"WIFI error {e}")
-            if tries % 5 == 0:
-                self.wifi_index = (self.wifi_index + 1) % len(self.wifi)
-                tries = 0
+            self.wifi_index = (self.wifi_index + 1) % len(self.wifi)
         print(f"Network {self.wlan.ifconfig()}")
         data = json.dumps( {'data': data_string, 'name':self.name } )
         self.post( data )
@@ -69,7 +66,7 @@ class Transmit:
             self.wlan.disconnect()
         except Exception as e:
             print(f"Disconnect error {e}")
-        self.wlan.acative=False
+        self.wlan.active(False)
 
 def read_toml():
     try:
@@ -142,7 +139,7 @@ def main(sysargs):
 
     try:
         run(toml)
-    except KeyboardInterupt:
+    except KeyboardInterrupt:
         if server:
             server.close()
 
