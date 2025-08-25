@@ -37,20 +37,25 @@ class Transmit:
             
     def upload( self, data_string ):
         index = self.wifi_index
+        self.wlan.active(True)
+        tries = 0
         while not self.wlan.isconnected():
             try:
-                print(f"Attempting wifi {self.wifi_index}: {self.wifi[self.wifi_index]['ssid']} / {self.wifi[self.wifi_index]['password']}")
-                self.wlan.active(True)
+                tries += 1
+                print(f"Attempting wifi {self.wifi_index}:{tries} {self.wifi[self.wifi_index]['ssid']} / {self.wifi[self.wifi_index]['password']}")
                 self.wlan.connect( self.wifi[self.wifi_index]['ssid'], self.wifi[self.wifi_index]['password'] )
+                machine.idle()
                 if self.wlan.isconnected():
                     break
             except Exception as e:
                 print(f"WIFI error {e}")
-            self.wifi_index = (self.wifi_index + 1) % len(self.wifi)
-            if self.wifi_index == index:
-                machine.idle()
+            if tries % 5 == 0:
+                self.wifi_index = (self.wifi_index + 1) % len(self.wifi)
+                tries = 0
+        print(f"Network {self.wlan.ifconfig()}")
         data = json.dumps( {'data': data_string, 'name':self.name } )
         self.post( data )
+        self.wlan.active(False)
 
     def post( self, data ):
         print(f"Sending {data}") 
