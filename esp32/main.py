@@ -39,6 +39,7 @@ class Transmit:
         while not self.wlan.isconnected():
             try:
                 print(f"Attempting wifi {self.wifi_index}: {self.wifi[self.wifi_index]['ssid']} / {self.wifi[self.wifi_index]['password']}")
+                self.wlan.active(True)
                 self.wlan.connect( self.wifi[self.wifi_index]['ssid'], self.wifi[self.wifi_index]['password'] )
                 if self.wlan.isconnected():
                     break
