@@ -207,11 +207,14 @@ class Plot {
         this.height = this.canvas.height ;
         
         this.ctx = this.canvas.getContext('2d');
+        this.jump() ;
+        this.colors=["#c20000","#3564B1","#7e00c2","#007031","#B33E00","#5D7000","#1700c2","#006f9e","#c20067"];
+    }
+    jump() {
         if ( 'orientation' in screen ) {
             screen.orientation.addEventListener('change', () => JumpTo.type('plot') );
         }
-        this.colors=["#c20000","#3564B1","#7e00c2","#007031","#B33E00","#5D7000","#1700c2","#006f9e","#c20067"];
-    }
+	}
     Show() {
         this.data();
         this.legend();
@@ -256,6 +259,10 @@ class Plot {
             legend.appendChild(bu);
         });
     }
+    Xlimits() {
+        this.X0 = 0;
+        this.X1 = 24;
+	}
     filter() {
         this.maxY = -Infinity ;
         this.minY = Infinity ;
@@ -265,8 +272,7 @@ class Plot {
         }));
         this.padX = 10;
         this.padY = 10;
-        this.X0 = 0;
-        this.X1 = 24;
+        this.Xlimits() ;
         this.scaleX = (this.width-2*this.padX)/(this.X1-this.X0) ;
         this.Y1 = Math.round( this.maxY + 1 );
         this.Y0 = Math.round( this.minY - 2 );
@@ -344,6 +350,79 @@ class Plot {
         return this.padY + (this.Y1-temp)*this.scaleY ;
     }
 }
+class Week extends Plot {
+    jump() {
+        if ( 'orientation' in screen ) {
+            screen.orientation.addEventListener('change', () => JumpTo.type('week') );
+        }
+	}
+    Xlimits() {
+        this.X0 = 0;
+        this.X1 = 7;
+	}
+    data() {
+        this.Ys={};
+        this.select={};
+        globals.dayData.forEach( row => {
+            const time= Number(row[0]) ;
+            const key = row[1] ;
+            if ( !(key in this.Ys) ) {
+                this.Ys[key] = [] ;
+                this.select[key] = true;
+            }
+            const numbers = ((row[2].match(/-?(\d+\.?\d*|\.?\d+)/g))??[]).map(Number) ;
+            numbers.forEach( n => this.Ys[key].push([time,n]));
+        });
+    }
+    setup() {
+        this.ctx.fillStyle = "white" ;
+        this.ctx.fillRect(0,0,this.width,this.height) ;
+        this.ctx.strokeStyle = "lightgray" ;
+        
+        this.ctx.lineWidth = 1 ;
+        this.ctx.beginPath() ;
+        for ( let time = this.X0; time <= this.X1 ; time += .25 ) {
+            // vert
+            this.ctx.moveTo( this.X(time),this.Y(this.Y0) ) ;
+            this.ctx.lineTo( this.X(time),this.Y(this.Y1) ) ;
+        }
+        for ( let temp = this.Y0; temp <= this.Y1 ; temp += 1 ) {
+            // horz
+            this.ctx.moveTo( this.X(this.X0),this.Y(temp) ) ;
+            this.ctx.lineTo( this.X(this.X1),this.Y(temp) ) ;
+        }
+        this.ctx.stroke() ;
+        
+        this.ctx.lineWidth = 2 ;
+        this.ctx.beginPath() ;
+        for ( let time = this.X0; time <= this.X1 ; time += .5 ) {
+            // 12 hr
+            this.ctx.moveTo( this.X(time),this.Y(this.Y0) ) ;
+            this.ctx.lineTo( this.X(time),this.Y(this.Y1) ) ;
+        }
+        this.ctx.stroke() ;
+        
+        this.ctx.lineWidth = 4 ;
+        this.ctx.beginPath() ;
+        for ( let time = this.X0; time <= this.X1 ; time += 1 ) {
+            // day
+            this.ctx.moveTo( this.X(time),this.Y(this.Y0) ) ;
+            this.ctx.lineTo( this.X(time),this.Y(this.Y1) ) ;
+        }
+        this.ctx.stroke() ;
+        
+        this.ctx.font = `${this.scaleY/2}px san serif` ;
+        this.ctx.fillStyle = "gray" ;
+        for ( let temp = this.Y0; temp <= this.Y1 ; temp += 1 ) {
+            this.ctx.fillText(Number(temp).toFixed(0),this.X(this.X0),this.Y(temp)) ;
+        }
+        this.ctx.font = `${this.scaleX}px san serif` ;
+        this.ctx.fillStyle = "gray" ;
+        for ( let time = this.X0; time <= this.X1 ; time += 1 ) {
+            this.ctx.fillText(Number(time).toFixed(0),this.X(time),this.Y(this.Y0)+0.5);
+        }
+    }
+}
 window.onload = () => {
     function TestDate(x) {
         switch (x.cellType) {
@@ -378,6 +457,11 @@ window.onload = () => {
             document.querySelectorAll(".non-plot").forEach( x=>x.style.display="none");
             document.querySelectorAll(".yes-plot").forEach( x=>x.style.display="block");
             new Plot().Show();
+            break ;
+        case "week":
+            document.querySelectorAll(".non-plot").forEach( x=>x.style.display="none");
+            document.querySelectorAll(".yes-plot").forEach( x=>x.style.display="block");
+            new Week().Show();
             break ;
         default: // "data"
             document.querySelectorAll(".non-plot").forEach( x=>x.style.display="block");

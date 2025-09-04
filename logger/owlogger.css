@@ -21,8 +21,8 @@ html,body {
     #toolbar {
         text-align:center; 
         grid-template: 
-            'reload date time' min-content
-            'data stat plot' min-content; 
+            'reload . date time' min-content
+            'data stat plot week' min-content; 
         font-size: 1.5em; 
     }
     #datebar {
@@ -64,6 +64,7 @@ html,body {
             'data' min-content
             'stat' min-content 
             'plot' min-content 
+            'week' min-content 
             '.' auto
             'date' min-content
             'time' min-content;
@@ -134,6 +135,9 @@ html,body {
 }
 #plot {
     grid-area:plot;
+}
+#week {
+    grid-area:week;
 }
 #date {
     grid-area:date;
