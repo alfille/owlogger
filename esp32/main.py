@@ -35,22 +35,27 @@ class Transmit:
             secret = jwt.encode( {'name':self.name},token,algorithm='HS256')
             self.headers = { 'Authorization': f'Bearer {secret}', 'Content-Type': 'application/text'}
             
-    def upload( self, data_string ):
-        self.wlan.active(True)
-        while not self.wlan.isconnected():
+    def connect( self ):
+        while True:
             try:
                 print(f"Attempting wifi {self.wifi_index} {self.wifi[self.wifi_index]['ssid']} / {self.wifi[self.wifi_index]['password']}")
                 self.wlan.connect( self.wifi[self.wifi_index]['ssid'], self.wifi[self.wifi_index]['password'] )
                 for tries in range(0,10):
                     time.sleep(1)
                     if self.wlan.isconnected():
-                        break
+                        print(f"Network {self.wlan.ifconfig()}")
+                        return
             except Exception as e:
                 print(f"WIFI error {e}")
             self.wifi_index = (self.wifi_index + 1) % len(self.wifi)
-        print(f"Network {self.wlan.ifconfig()}")
+    
+    def upload( self, data_string ):
+        self.wlan.active(True)
+        if not self.wlan.isconnected():
+            self.connect()
         data = json.dumps( {'data': data_string, 'name':self.name } )
-        self.post( data )
+        while not self.post(data):
+            self.connect()
         self.wlan.active(False)
 
     def post( self, data ):
@@ -58,7 +63,9 @@ class Transmit:
         try:
             response = urequests.post( self.server, data=data, headers=self.headers )
         except Exception as e:
-            print( f"{data} to {self.server} Error: {e}" ) 
+            print( f"{data} to {self.server} Error: {e}" )
+            return False ;
+        return True
     
     def close( self ):
         try:
@@ -113,6 +120,7 @@ def run(toml):
         # Get Temperatures
         temperatures = []
         roms = ds.scan()
+        print(roms);
         ds.convert_temp()
         time.sleep_ms(750)
         temperatures=[ds.read_temp(rom) for rom in roms]
