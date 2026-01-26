@@ -108,6 +108,8 @@ class OWLogServer(BaseHTTPRequestHandler):
         # parse url for type if present
         if "type" in u:
             match u["type"][0]:
+                case "week":
+                    self.type = "week"
                 case "plot":
                     self.type = "plot"
                 case "stat":
@@ -186,7 +188,11 @@ class OWLogServer(BaseHTTPRequestHandler):
 
     def _make_html( self, daystart ):
         # Get corresponding database entries for this date
-        dData = json.dumps(self.db.day_data( daystart ))
+        match self.type:
+            case "week":
+                dData = json.dumps(self.db.week_data( daystart ))
+            case _:
+                dData = json.dumps(self.db.day_data( daystart ))
 
         # Get days with data
         dDays =  [ d[0] for d in self.db.distinct_days( daystart )]
@@ -218,6 +224,7 @@ class OWLogServer(BaseHTTPRequestHandler):
                 <a class="button" id="data" href="#" onclick="JumpTo.type('data')">Data</a>
                 <a class="button" id="stat" href="#" onclick="JumpTo.type('stat')">Stats</a>
                 <a class="button" id="plot" href="#" onclick="JumpTo.type('plot')">Graph</a>
+                <a class="button" id="week" href="#" onclick="JumpTo.type('week')">Week</a>
                 <span id="date"></span>
                 <span id="time"></span>
             </div>
@@ -366,6 +373,14 @@ class Database:
         nextday = day + datetime.timedelta(days=1)
         records = self.command( """SELECT TIME(date) as t, source, value FROM datalog WHERE DATE(date) BETWEEN DATE(?) AND DATE(?) ORDER BY t""", (day.isoformat(),nextday.isoformat()), True )
         #print(records)
+        return records
+        
+    def week_data( self, day ):
+        # Get records from a full day
+        nextday = day + datetime.timedelta(days=1)
+        firstday = day + datetime.timedelta(days=-6)
+        records = self.command( """SELECT strftime('%J',date)-strftime("%J",?) as t, source, value FROM datalog WHERE DATE(date) BETWEEN DATE(?) AND DATE(?) ORDER BY t""", (firstday.isoformat(),firstday.isoformat(),nextday.isoformat()), True )
+        print(records)
         return records
         
     def distinct_days( self, day ):
