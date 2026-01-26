@@ -208,7 +208,14 @@ class Plot {
         
         this.ctx = this.canvas.getContext('2d');
         this.jump() ;
-        this.colors=["#c20000","#3564B1","#7e00c2","#007031","#B33E00","#5D7000","#1700c2","#006f9e","#c20067"];
+        this.colors=[
+		  "Navy", "DarkOrange", "Green", "DeepPink", "Black", 
+		  "Goldenrod", "Purple", "SaddleBrown", "RoyalBlue", "Crimson", 
+		  "DarkSlateGray", "Olive", "Indigo", "DarkCyan", "Firebrick", 
+		  "SlateBlue", "SeaGreen", "Chocolate", "MidnightBlue", "DarkMagenta", 
+		  "ForestGreen", "Maroon", "SteelBlue", "DarkGoldenrod", "DarkViolet", 
+		  "Sienna", "Teal", "IndianRed", "DarkGreen", "Red"
+		];
     }
     jump() {
         if ( 'orientation' in screen ) {
