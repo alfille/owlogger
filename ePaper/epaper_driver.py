@@ -69,11 +69,20 @@ class EPD_7in5_V2:
     ACTIVE_PROGRAM = 0xA1
     READ_OTP_DATA = 0xA2
     
-    def __init__(self):
-        """Initialize ePaper display with ESP32-C3 driver board pins"""
+    def __init__(self, use_busy=False):
+        """
+        Initialize ePaper display with ESP32-C3 driver board pins
+        
+        Args:
+            use_busy: Set to False if BUSY pin is stuck or not connected
+        """
         print("="*50)
         print("Initializing 7.5\" ePaper with ESP32-C3")
+        if not use_busy:
+            print("BUSY PIN DISABLED - Using fixed delays")
         print("="*50)
+        
+        self.use_busy = use_busy
         
         # Initialize SPI
         # ESP32-C3 uses HSPI (SPI2) with these pins on driver board
@@ -96,10 +105,14 @@ class EPD_7in5_V2:
         self.cs = Pin(3, Pin.OUT, value=1)    # D3 - CS (start high)
         self.dc = Pin(5, Pin.OUT, value=0)    # D5 - DC
         self.rst = Pin(2, Pin.OUT, value=1)   # D2 - RST (start high)
-        self.busy = Pin(4, Pin.IN)  # D4 - BUSY (no pull-up, let display control it)
         
-        # Diagnostic: Check BUSY pin initial state
-        print(f"  BUSY pin initial state: {self.busy.value()}")
+        if self.use_busy:
+            self.busy = Pin(4, Pin.IN)  # D4 - BUSY (no pull-up)
+            print(f"  BUSY pin enabled, initial state: {self.busy.value()}")
+        else:
+            self.busy = None
+            print("  BUSY pin disabled - using timed delays")
+        
         print("  Control pins configured")
         
         # Display properties
@@ -154,18 +167,23 @@ class EPD_7in5_V2:
         self.cs.value(1)  # Deselect
     
     def wait_until_idle(self):
-        """Wait until display is ready (BUSY goes LOW)"""
+        """Wait until display is ready"""
+        if not self.use_busy:
+            # Fixed delay when BUSY pin not used
+            print("Waiting (fixed delay)...", end='')
+            time.sleep_ms(2000)  # 2 second delay
+            print(" Done")
+            return
+        
+        # Original BUSY pin checking
         print("Waiting for display (BUSY pin check)...", end='')
         
-        # Some displays BUSY is LOW when busy, HIGH when ready
-        # Let's check initial state
         initial = self.busy.value()
         print(f" Initial BUSY={initial}", end='')
         
         timeout = 400  # 40 seconds
         count = 0
         
-        # Try standard: wait for BUSY to go LOW (0)
         while self.busy.value() == 1:
             time.sleep_ms(100)
             count += 1
@@ -173,7 +191,7 @@ class EPD_7in5_V2:
                 print(".", end='')
             if count >= timeout:
                 print(f" TIMEOUT! BUSY stuck at {self.busy.value()}")
-                print("\nTIP: Try checking physical connections or skip BUSY check")
+                print("\nTIP: Use use_busy=False to disable BUSY checks")
                 return
         print(" Ready!")
     
@@ -183,10 +201,11 @@ class EPD_7in5_V2:
         self.rst.value(1)
         time.sleep_ms(200)
         self.rst.value(0)
-        time.sleep_ms(20)  # Longer low pulse
+        time.sleep_ms(20)
         self.rst.value(1)
         time.sleep_ms(200)
-        print(f"    BUSY after reset: {self.busy.value()}")
+        if self.use_busy and self.busy:
+            print(f"    BUSY after reset: {self.busy.value()}")
     
     def init(self):
         """Initialize display with proper settings"""
@@ -194,14 +213,17 @@ class EPD_7in5_V2:
         
         # Give display time to wake up
         time.sleep_ms(500)
-        print(f"  BUSY before init: {self.busy.value()}")
         
-        # Skip first wait if BUSY seems stuck
-        if self.busy.value() == 1:
-            print("  WARNING: BUSY high before init, waiting briefly...")
+        if not self.use_busy:
+            print("  Using timed initialization (no BUSY checks)")
             time.sleep_ms(1000)
         else:
-            self.wait_until_idle()
+            print(f"  BUSY before init: {self.busy.value()}")
+            if self.busy.value() == 1:
+                print("  WARNING: BUSY high before init, waiting briefly...")
+                time.sleep_ms(1000)
+            else:
+                self.wait_until_idle()
         
         # Software reset
         print("  Configuring display...")
@@ -224,16 +246,17 @@ class EPD_7in5_V2:
         self._command(self.POWER_ON)
         time.sleep_ms(100)
         
-        # Give display time to power on
-        time.sleep_ms(1000)
-        print(f"  BUSY after power on: {self.busy.value()}")
-        
-        # Only wait if BUSY went low
-        if self.busy.value() == 0:
-            self.wait_until_idle()
+        # Wait for power-on
+        if not self.use_busy:
+            time.sleep_ms(2000)  # Fixed delay
         else:
-            print("  Skipping BUSY wait (display may not support it)")
-            time.sleep_ms(2000)
+            time.sleep_ms(1000)
+            print(f"  BUSY after power on: {self.busy.value()}")
+            if self.busy.value() == 0:
+                self.wait_until_idle()
+            else:
+                print("  Skipping BUSY wait")
+                time.sleep_ms(2000)
         
         # Panel setting - KW mode
         self._command(self.PANEL_SETTING)
@@ -245,9 +268,9 @@ class EPD_7in5_V2:
         
         # Resolution setting
         self._command(self.TCON_RESOLUTION)
-        self._data(0x03)  # Source: 800
+        self._data(0x03)
         self._data(0x20)
-        self._data(0x01)  # Gate: 480
+        self._data(0x01)
         self._data(0xE0)
         
         # Dual SPI
@@ -275,15 +298,19 @@ class EPD_7in5_V2:
         print(f"   CS:   {self.cs.value()} (should be 1)")
         print(f"   DC:   {self.dc.value()}")
         print(f"   RST:  {self.rst.value()} (should be 1)")
-        print(f"   BUSY: {self.busy.value()}")
+        if self.use_busy and self.busy:
+            print(f"   BUSY: {self.busy.value()}")
+        else:
+            print(f"   BUSY: Disabled")
         
-        print("\n2. Testing Reset...")
-        self.rst.value(0)
-        time.sleep_ms(100)
-        print(f"   BUSY during reset: {self.busy.value()}")
-        self.rst.value(1)
-        time.sleep_ms(100)
-        print(f"   BUSY after reset: {self.busy.value()}")
+        if self.use_busy and self.busy:
+            print("\n2. Testing Reset...")
+            self.rst.value(0)
+            time.sleep_ms(100)
+            print(f"   BUSY during reset: {self.busy.value()}")
+            self.rst.value(1)
+            time.sleep_ms(100)
+            print(f"   BUSY after reset: {self.busy.value()}")
         
         print("\n3. Testing SPI...")
         try:
@@ -294,14 +321,8 @@ class EPD_7in5_V2:
         except Exception as e:
             print(f"   SPI ERROR: {e}")
         
-        print("\n4. Recommendations:")
-        if self.busy.value() == 1:
-            print("   - BUSY pin stuck HIGH")
-            print("   - Check FPC cable connection")
-            print("   - Try different display or cable")
-            print("   - Use no_busy=True option")
-        else:
-            print("   - BUSY pin looks OK")
+        print("\n4. Configuration:")
+        print(f"   BUSY checks: {'Enabled' if self.use_busy else 'Disabled (using fixed delays)'}")
         
         print("="*50 + "\n")
     
@@ -428,92 +449,29 @@ class BatteryMonitor:
 
 
 # Demo functions
-def demo_diagnostic():
+def demo_diagnostic(use_busy=False):
     """Run diagnostic check"""
     print("\n" + "="*50)
     print("DEMO: Diagnostic Check")
     print("="*50 + "\n")
     
     try:
-        epd = EPD_7in5_V2()
+        epd = EPD_7in5_V2(use_busy=use_busy)
         epd.diagnose()
+        return epd
     except Exception as e:
         print(f"Error during init: {e}")
         import sys
         sys.print_exception(e)
 
 
-def demo_simple_test():
-    """Simplest possible test - no BUSY waits"""
-    print("\n" + "="*50)
-    print("DEMO: Simple Test (No BUSY checks)")
-    print("="*50 + "\n")
-    
-    # Manual setup without full init
-    spi = SPI(1, baudrate=4_000_000, polarity=0, phase=0,
-              sck=Pin(8), mosi=Pin(10))
-    cs = Pin(3, Pin.OUT, value=1)
-    dc = Pin(5, Pin.OUT, value=0)
-    rst = Pin(2, Pin.OUT, value=1)
-    
-    print("Hardware reset...")
-    rst.value(0)
-    time.sleep_ms(20)
-    rst.value(1)
-    time.sleep_ms(200)
-    
-    def cmd(c):
-        dc.value(0)
-        cs.value(0)
-        spi.write(bytearray([c]))
-        cs.value(1)
-    
-    def data(d):
-        dc.value(1)
-        cs.value(0)
-        spi.write(bytearray([d]))
-        cs.value(1)
-    
-    print("Sending minimal init sequence...")
-    
-    # Minimal init
-    cmd(0x04)  # Power on
-    time.sleep_ms(100)
-    
-    cmd(0x00)  # Panel setting
-    data(0x1F)
-    
-    cmd(0x61)  # Resolution
-    data(0x03)
-    data(0x20)
-    data(0x01)
-    data(0xE0)
-    
-    print("Clearing to white...")
-    cmd(0x10)  # Old data
-    for _ in range(48000):
-        data(0xFF)
-    
-    cmd(0x13)  # New data
-    for _ in range(48000):
-        data(0xFF)
-    
-    print("Triggering refresh...")
-    cmd(0x12)  # Refresh
-    
-    print("Wait 5 seconds for display to update...")
-    time.sleep(5)
-    
-    print("Done! Did the display update?")
-
-
-def demo_hello():
+def demo_hello(use_busy=False):
     """Simple hello world"""
     print("\n" + "="*50)
     print("DEMO: Hello World")
     print("="*50 + "\n")
     
-    epd = EPD_7in5_V2()
+    epd = EPD_7in5_V2(use_busy=use_busy)
     epd.clear()
     
     epd.fill(1)
@@ -530,13 +488,13 @@ def demo_hello():
     return epd
 
 
-def demo_dashboard():
+def demo_dashboard(use_busy=False):
     """Dashboard with battery info"""
     print("\n" + "="*50)
     print("DEMO: Dashboard")
     print("="*50 + "\n")
     
-    epd = EPD_7in5_V2()
+    epd = EPD_7in5_V2(use_busy=use_busy)
     bat = BatteryMonitor()
     
     epd.fill(1)
@@ -583,13 +541,13 @@ def demo_dashboard():
     return epd
 
 
-def demo_test_pattern():
+def demo_test_pattern(use_busy=False):
     """Test pattern"""
     print("\n" + "="*50)
     print("DEMO: Test Pattern")
     print("="*50 + "\n")
     
-    epd = EPD_7in5_V2()
+    epd = EPD_7in5_V2(use_busy=use_busy)
     
     epd.fill(1)
     
