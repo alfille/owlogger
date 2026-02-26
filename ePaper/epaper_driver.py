@@ -96,7 +96,10 @@ class EPD_7in5_V2:
         self.cs = Pin(3, Pin.OUT, value=1)    # D3 - CS (start high)
         self.dc = Pin(5, Pin.OUT, value=0)    # D5 - DC
         self.rst = Pin(2, Pin.OUT, value=1)   # D2 - RST (start high)
-        self.busy = Pin(4, Pin.IN, Pin.PULL_UP)  # D4 - BUSY
+        self.busy = Pin(4, Pin.IN)  # D4 - BUSY (no pull-up, let display control it)
+        
+        # Diagnostic: Check BUSY pin initial state
+        print(f"  BUSY pin initial state: {self.busy.value()}")
         print("  Control pins configured")
         
         # Display properties
@@ -152,16 +155,25 @@ class EPD_7in5_V2:
     
     def wait_until_idle(self):
         """Wait until display is ready (BUSY goes LOW)"""
-        print("Waiting for display...", end='')
+        print("Waiting for display (BUSY pin check)...", end='')
+        
+        # Some displays BUSY is LOW when busy, HIGH when ready
+        # Let's check initial state
+        initial = self.busy.value()
+        print(f" Initial BUSY={initial}", end='')
+        
         timeout = 400  # 40 seconds
         count = 0
-        while self.busy.value() == 1:  # HIGH means busy
+        
+        # Try standard: wait for BUSY to go LOW (0)
+        while self.busy.value() == 1:
             time.sleep_ms(100)
             count += 1
             if count % 10 == 0:
                 print(".", end='')
             if count >= timeout:
-                print(" TIMEOUT!")
+                print(f" TIMEOUT! BUSY stuck at {self.busy.value()}")
+                print("\nTIP: Try checking physical connections or skip BUSY check")
                 return
         print(" Ready!")
     
@@ -169,16 +181,27 @@ class EPD_7in5_V2:
         """Perform hardware reset"""
         print("  Hardware reset...")
         self.rst.value(1)
-        time.sleep_ms(20)
+        time.sleep_ms(200)
         self.rst.value(0)
-        time.sleep_ms(2)
+        time.sleep_ms(20)  # Longer low pulse
         self.rst.value(1)
-        time.sleep_ms(20)
+        time.sleep_ms(200)
+        print(f"    BUSY after reset: {self.busy.value()}")
     
     def init(self):
         """Initialize display with proper settings"""
         self.reset()
-        self.wait_until_idle()
+        
+        # Give display time to wake up
+        time.sleep_ms(500)
+        print(f"  BUSY before init: {self.busy.value()}")
+        
+        # Skip first wait if BUSY seems stuck
+        if self.busy.value() == 1:
+            print("  WARNING: BUSY high before init, waiting briefly...")
+            time.sleep_ms(1000)
+        else:
+            self.wait_until_idle()
         
         # Software reset
         print("  Configuring display...")
@@ -200,7 +223,17 @@ class EPD_7in5_V2:
         # Power on
         self._command(self.POWER_ON)
         time.sleep_ms(100)
-        self.wait_until_idle()
+        
+        # Give display time to power on
+        time.sleep_ms(1000)
+        print(f"  BUSY after power on: {self.busy.value()}")
+        
+        # Only wait if BUSY went low
+        if self.busy.value() == 0:
+            self.wait_until_idle()
+        else:
+            print("  Skipping BUSY wait (display may not support it)")
+            time.sleep_ms(2000)
         
         # Panel setting - KW mode
         self._command(self.PANEL_SETTING)
@@ -231,6 +264,46 @@ class EPD_7in5_V2:
         self._data(0x22)
         
         print("  Display configured!")
+    
+    def diagnose(self):
+        """Run diagnostic checks"""
+        print("\n" + "="*50)
+        print("DIAGNOSTIC MODE")
+        print("="*50)
+        
+        print("\n1. Pin States:")
+        print(f"   CS:   {self.cs.value()} (should be 1)")
+        print(f"   DC:   {self.dc.value()}")
+        print(f"   RST:  {self.rst.value()} (should be 1)")
+        print(f"   BUSY: {self.busy.value()}")
+        
+        print("\n2. Testing Reset...")
+        self.rst.value(0)
+        time.sleep_ms(100)
+        print(f"   BUSY during reset: {self.busy.value()}")
+        self.rst.value(1)
+        time.sleep_ms(100)
+        print(f"   BUSY after reset: {self.busy.value()}")
+        
+        print("\n3. Testing SPI...")
+        try:
+            self.cs.value(0)
+            self.spi.write(b'\x00')
+            self.cs.value(1)
+            print("   SPI write OK")
+        except Exception as e:
+            print(f"   SPI ERROR: {e}")
+        
+        print("\n4. Recommendations:")
+        if self.busy.value() == 1:
+            print("   - BUSY pin stuck HIGH")
+            print("   - Check FPC cable connection")
+            print("   - Try different display or cable")
+            print("   - Use no_busy=True option")
+        else:
+            print("   - BUSY pin looks OK")
+        
+        print("="*50 + "\n")
     
     def clear(self, color=0xFF):
         """
@@ -355,6 +428,85 @@ class BatteryMonitor:
 
 
 # Demo functions
+def demo_diagnostic():
+    """Run diagnostic check"""
+    print("\n" + "="*50)
+    print("DEMO: Diagnostic Check")
+    print("="*50 + "\n")
+    
+    try:
+        epd = EPD_7in5_V2()
+        epd.diagnose()
+    except Exception as e:
+        print(f"Error during init: {e}")
+        import sys
+        sys.print_exception(e)
+
+
+def demo_simple_test():
+    """Simplest possible test - no BUSY waits"""
+    print("\n" + "="*50)
+    print("DEMO: Simple Test (No BUSY checks)")
+    print("="*50 + "\n")
+    
+    # Manual setup without full init
+    spi = SPI(1, baudrate=4_000_000, polarity=0, phase=0,
+              sck=Pin(8), mosi=Pin(10))
+    cs = Pin(3, Pin.OUT, value=1)
+    dc = Pin(5, Pin.OUT, value=0)
+    rst = Pin(2, Pin.OUT, value=1)
+    
+    print("Hardware reset...")
+    rst.value(0)
+    time.sleep_ms(20)
+    rst.value(1)
+    time.sleep_ms(200)
+    
+    def cmd(c):
+        dc.value(0)
+        cs.value(0)
+        spi.write(bytearray([c]))
+        cs.value(1)
+    
+    def data(d):
+        dc.value(1)
+        cs.value(0)
+        spi.write(bytearray([d]))
+        cs.value(1)
+    
+    print("Sending minimal init sequence...")
+    
+    # Minimal init
+    cmd(0x04)  # Power on
+    time.sleep_ms(100)
+    
+    cmd(0x00)  # Panel setting
+    data(0x1F)
+    
+    cmd(0x61)  # Resolution
+    data(0x03)
+    data(0x20)
+    data(0x01)
+    data(0xE0)
+    
+    print("Clearing to white...")
+    cmd(0x10)  # Old data
+    for _ in range(48000):
+        data(0xFF)
+    
+    cmd(0x13)  # New data
+    for _ in range(48000):
+        data(0xFF)
+    
+    print("Triggering refresh...")
+    cmd(0x12)  # Refresh
+    
+    print("Wait 5 seconds for display to update...")
+    time.sleep(5)
+    
+    print("Done! Did the display update?")
+
+
 def demo_hello():
     """Simple hello world"""
     print("\n" + "="*50)
@@ -471,27 +623,29 @@ def main():
     print("# MicroPython Demo")
     print("#"*50 + "\n")
     
-    try:
-        # Run hello world
-        epd = demo_hello()
-        print("\nWaiting 5 seconds...")
-        time.sleep(5)
-        
-        # Uncomment to try other demos:
-        # epd = demo_dashboard()
-        # time.sleep(5)
-        
-        # epd = demo_test_pattern()
-        # time.sleep(5)
-        
-        # Sleep to save power
-        epd.sleep()
-        print("\n✓ Demo complete!\n")
-        
-    except Exception as e:
-        print(f"\n✗ Error: {e}\n")
-        import sys
-        sys.print_exception(e)
+    print("Choose a demo:")
+    print("1. Diagnostic check (recommended if having issues)")
+    print("2. Simple test (no BUSY checks)")
+    print("3. Normal demo\n")
+    
+    # Auto-run diagnostic if stuck
+    print("Running diagnostic first...\n")
+    demo_diagnostic()
+    
+    print("\n\nNow trying simple test...")
+    demo_simple_test()
+    
+    # Uncomment to try normal demo:
+    # try:
+    #     epd = demo_hello()
+    #     print("\nWaiting 5 seconds...")
+    #     time.sleep(5)
+    #     epd.sleep()
+    #     print("\n✓ Demo complete!\n")
+    # except Exception as e:
+    #     print(f"\n✗ Error: {e}\n")
+    #     import sys
+    #     sys.print_exception(e)
 
 
 if __name__ == "__main__":
