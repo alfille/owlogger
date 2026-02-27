@@ -65,6 +65,8 @@ class Transmit:
         except Exception as e:
             print( f"{data} to {self.server} Error: {e}" )
             return False ;
+        finally:
+            response.close()
         return True
     
     def close( self ):
