@@ -26,6 +26,11 @@ class Get:
         
         self.display = epaper75.EPD()
         
+        self.error_screen("Startup")
+        self.display.display()
+        self.display.sleep()
+        
+        
     def get_server( self, toml ):
         if 'server' in toml:
             self.server = toml['server'].strip()
