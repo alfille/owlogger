@@ -84,7 +84,7 @@ class Get:
             response = urequests( url, stream = True, headers = self.headers )
             print( "Status code:", response.status_code)
             if response.status_code == 200:
-                response.raw.readinto(display.buffer)
+                response.raw.readinto(self.display.buffer)
             else:
                 self.error_screen("Status {} from {}".format(response.status_code,self.server))
         except Exception as e:
@@ -92,20 +92,20 @@ class Get:
         finally:
             if 'response' in locals():
                 response.close()
-            display.display()
-            display.sleep()
+            self.display.display()
+            self.display.sleep()
             
     def error_screen(self, text ):
-        display.fb.fill(1) 
-        display.fb.rect(10, 10, 780, 460, 0) 
-        display.fb.fill_rect(10, 10, 780, 60, 0)
-        display.fb.text("OWLOGGER ePaper display", 280, 35, 1)
+        self.display.fb.fill(1) 
+        self.display.fb.rect(10, 10, 780, 460, 0) 
+        self.display.fb.fill_rect(10, 10, 780, 60, 0)
+        self.display.fb.text("OWLOGGER ePaper display", 280, 35, 1)
         if self.wlan.isconnected():
-            display.fb.text("Device Status: CONNECTED", 30, 100, 0)
+            self.display.fb.text("Device Status: CONNECTED", 30, 100, 0)
         else:
-            display.fb.text("Device Status: NOT CONNECTED", 30, 100, 0)
-        display.fb.text("Display Type: 7.5 Inch Monochrome", 30, 120, 0)
-        display.fb.text(text, 30, 140, 0)
+            self.display.fb.text("Device Status: NOT CONNECTED", 30, 100, 0)
+        self.display.fb.text("Display Type: 7.5 Inch Monochrome", 30, 120, 0)
+        self.display.fb.text(text, 30, 140, 0)
     
     def close( self ):
         try:
@@ -113,7 +113,7 @@ class Get:
         except Exception as e:
             print(f"Disconnect error {e}")
         self.wlan.active(False)
-        display.sleep()
+        self.display.sleep()
 
 def read_toml():
     try:
