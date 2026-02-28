@@ -114,6 +114,8 @@ class OWLogServer(BaseHTTPRequestHandler):
                     self.type = "plot"
                 case "stat":
                     self.type = "stat"
+                case '7in5':
+                    self.type = '7in5'
                 case _:
                     self.type = "data"
         else:
