@@ -10,7 +10,7 @@ import gc
 import tomli
 import ubinascii
 
-import epaper75.py
+import epaper75
 
 #----------
 getter = None
