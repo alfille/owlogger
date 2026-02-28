@@ -26,7 +26,7 @@ class Get:
         
         self.display = epaper75.EPD()
         
-    def get_server( toml ):
+    def get_server( self, toml ):
         if 'server' in toml:
             self.server = toml['server'].strip()
             if self.server[-1] == '/':
@@ -37,7 +37,7 @@ class Get:
             print("No server in TOML file")
             sys.exit(1)
         
-    def get_wifi( toml ):
+    def get_wifi( self, toml ):
         if 'wifi' in toml:
             self.wifi = toml['wifi']
             self.wifi_index = 0
@@ -45,7 +45,7 @@ class Get:
             print("No wifi entries in TOML file")
             sys.exit(1)
         
-    def get_headers( toml ):
+    def get_headers( self, toml ):
         if ('username' in toml) and ('password' in toml):
             auth_str = "{}:{}".format(toml['username'], toml['password'])
             auth_b64 = ubinascii.b2a_base64(auth_str.encode()).decode().strip()
@@ -106,25 +106,6 @@ class Get:
             display.fb.text("Device Status: NOT CONNECTED", 30, 100, 0)
         display.fb.text("Display Type: 7.5 Inch Monochrome", 30, 120, 0)
         display.fb.text(text, 30, 140, 0)
-
-    
-    def upload( self, data_string ):
-        self.wlan.active(True)
-        if not self.wlan.isconnected():
-            self.connect()
-        data = json.dumps( {'data': data_string, 'name':self.name } )
-        while not self.post(data):
-            self.connect()
-        self.wlan.active(False)
-
-    def post( self, data ):
-        print(f"Sending {data}") 
-        try:
-            response = urequests.post( self.server, data=data, headers=self.headers )
-        except Exception as e:
-            print( f"{data} to {self.server} Error: {e}" )
-            return False ;
-        return True
     
     def close( self ):
         try:
