@@ -34,7 +34,7 @@ from urllib.parse import urlparse
 
 # for Image
 try:
-    import PIL import Image, ImageDraw
+    from PIL import Image, ImageDraw
 except:
     print("PIL (Pillow) module needs to be installed")
     print("either 'pip install Pillow' or 'apt install python3-pil'")
@@ -83,6 +83,8 @@ class OWLogServer(BaseHTTPRequestHandler):
                 : return self.file_return("image/x-icon")
             case  "/7in5"               \
                 : return self.frame_buffer(800,480)
+            case  "test"               \
+                : return self.frame_png(800,480)
 
         # test URL -- only queries allowed
         if len(self.path) > 1:
@@ -314,22 +316,34 @@ class OWLogServer(BaseHTTPRequestHandler):
             
         return True # Bad 
         
+    def frame_png( self, width=800, height=480 ):
+        img = self.create_image( width, height )
+
+        # 2. Convert to raw bytes (48,000 bytes)
+        raw_buffer = img.tobytes()
+
+        # 3. Save to PNG for the Browser
+        # Even though the image is 1-bit, saving as PNG makes it browser-readable
+        img_byte_arr = io.BytesIO()
+        img.save(img_byte_arr, format='PNG')
+        img_bytes = img_byte_arr.getvalue()
+
+        # 4. Send Response
+        self.send_response(200)
+        self.send_header('Content-type', 'image/png')
+        self.send_header('Content-Length', str(len(img_bytes)))
+        self.best_practice()
+
+        # 4. Write the binary data to the stream
+        self.wfile.write(img_bytes)
+        print(f"Sent {len(img_bytes)} bytes to {self.client_address}")
+
     def frame_buffer( self, width=800, height=480 ):
         # Check access
         if self._access_forbidden():
             return self._send_auth_challenge()
 
-        white = 1
-        black = 0
-
-        # Create monochrome image
-        img = Image.new('1', (width, height), color=white) # 1 = White
-        draw = ImageDraw.Draw(img)
-        
-            # --- Add your drawing logic here ---
-        draw.rectangle([20, 20, 780, 460], outline=0, width=5)
-        draw.text((350, 230), "REMOTE DASHBOARD", fill=black)
-        # -----------------------------------
+        img = self.create_image( width, height )
 
         # 2. Convert to raw bytes (48,000 bytes)
         raw_buffer = img.tobytes()
@@ -343,6 +357,22 @@ class OWLogServer(BaseHTTPRequestHandler):
         # 4. Write the binary data to the stream
         self.wfile.write(raw_buffer)
         print(f"Sent {len(raw_buffer)} bytes to {self.client_address}")
+
+    def create_image( self, width=800, height=480 ):
+        white = 1
+        black = 0
+
+        # Create monochrome image
+        img = Image.new('1', (width, height), color=white) # 1 = White
+        draw = ImageDraw.Draw(img)
+        
+            # --- Add your drawing logic here ---
+        draw.rectangle([20, 20, 780, 460], outline=0, width=5)
+        draw.text((350, 230), "REMOTE DASHBOARD", fill=black)
+        # -----------------------------------
+
+        return img
+        
 
 class Database:
     # sqlite3 interface
