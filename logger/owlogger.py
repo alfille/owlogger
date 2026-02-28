@@ -32,6 +32,14 @@ import tomllib
 import urllib
 from urllib.parse import urlparse
 
+# for Image
+try:
+    import PIL import Image, ImageDraw
+except:
+    print("PIL (Pillow) module needs to be installed")
+    print("either 'pip install Pillow' or 'apt install python3-pil'")
+    sys.exit(1)
+
 # for authentification
 try:
     import jwt
@@ -72,7 +80,9 @@ class OWLogServer(BaseHTTPRequestHandler):
                 | "/owlogger.css"       \
                 : return self.file_return("text/css")
             case  "/owlogger.css"       \
-                : return self.file_return("image/x-icon") 
+                : return self.file_return("image/x-icon")
+            case  "/7in5"               \
+                : return self.frame_buffer(800,480)
 
         # test URL -- only queries allowed
         if len(self.path) > 1:
@@ -114,8 +124,6 @@ class OWLogServer(BaseHTTPRequestHandler):
                     self.type = "plot"
                 case "stat":
                     self.type = "stat"
-                case '7in5':
-                    self.type = '7in5'
                 case _:
                     self.type = "data"
         else:
@@ -305,6 +313,36 @@ class OWLogServer(BaseHTTPRequestHandler):
             return False ; # password ok!
             
         return True # Bad 
+        
+    def frame_buffer( self, width=800, height=480 ):
+        # Check access
+        if self._access_forbidden():
+            return self._send_auth_challenge()
+
+        white = 1
+        black = 0
+
+        # Create monochrome image
+        img = Image.new('1', (width, height), color=white) # 1 = White
+        draw = ImageDraw.Draw(img)
+        
+            # --- Add your drawing logic here ---
+        draw.rectangle([20, 20, 780, 460], outline=0, width=5)
+        draw.text((350, 230), "REMOTE DASHBOARD", fill=black)
+        # -----------------------------------
+
+        # 2. Convert to raw bytes (48,000 bytes)
+        raw_buffer = img.tobytes()
+
+        # 3. Send HTTP Headers
+        self.send_response(200)
+        self.send_header('Content-type', 'application/octet-stream')
+        self.send_header('Content-Length', str(len(raw_buffer)))
+        self.best_practice()
+
+        # 4. Write the binary data to the stream
+        self.wfile.write(raw_buffer)
+        print(f"Sent {len(raw_buffer)} bytes to {self.client_address}")
 
 class Database:
     # sqlite3 interface
@@ -496,7 +534,7 @@ def main(sysargs):
     
     config = "/etc/owlogger/owlogger.toml"
     # config
-    parser.add_argument("--config",
+    parser.add_argument("-c", "--config",
         required=False,
         default=config,
         dest="config",

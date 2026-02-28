@@ -1,6 +1,5 @@
 # ESP32-C3 owlogger display
 
-import machine
 import os
 import sys
 import network
@@ -31,9 +30,9 @@ class Get:
         if 'server' in toml:
             self.server = toml['server'].strip()
             if self.server[-1] == '/':
-                self.url = "{}?type=7in5".format(self.server)
+                self.url = "{}7in5".format(self.server)
             else:
-                self.url = "{}/?type=7in5".format(self.server)
+                self.url = "{}/7in5".format(self.server)
         else:
             print("No server in TOML file")
             sys.exit(1)
@@ -51,11 +50,16 @@ class Get:
             auth_str = "{}:{}".format(toml['username'], toml['password'])
             auth_b64 = ubinascii.b2a_base64(auth_str.encode()).decode().strip()
             self.headers = {
-                "Authorization": "Basic " + auth_b64
+                "Authorization": "Basic " + auth_b64,
+                "Accept": "application/octet-stream",
+                "Connection": "close"
             }
         else:
-            print("No username and password in TOML file")
-            sys.exit(1)
+            self.headers = {
+                "Accept": "application/octet-stream",
+                "Connection": "close"
+            }
+            print("No username / passord")
         
     def connect( self ):
         while True:
