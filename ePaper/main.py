@@ -18,18 +18,24 @@ getter = None
 class Get:
     def __init__(self, toml ):
         self.get_server(toml)
+        print("Server",self.server)
         self.get_headers(toml)
+        print("got headers")
         self.get_wifi(toml)
+        print("got wifi")
         self.wlan = network.WLAN(network.STA_IF)
         self.wlan.active(True)
         self.wlan.config( reconnects=3)
+        print("got lan")
         
         self.display = epaper75.EPD()
+        self.display.init()
+        print("initialized display")
         
         self.error_screen("Startup")
         self.display.display()
         self.display.sleep()
-        
+        print("Screen!")
         
     def get_server( self, toml ):
         if 'server' in toml:
