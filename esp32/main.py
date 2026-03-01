@@ -66,13 +66,15 @@ class Transmit:
         wdt.feed()
         try:
             response = urequests.post( self.server, data=data, headers=self.headers )
+            print("Sent")
+            success = True
         except Exception as e:
             print( f"{data} to {self.server} Error: {e}" )
-            return False ;
+            success = False ;
         finally:
             wdt.feed()
             response.close()
-        return True
+        return success
     
     def close( self ):
         try:
