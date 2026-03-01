@@ -16,6 +16,8 @@ import jwt
 
 #----------
 server = None
+time.sleep(2) #for watchdog
+wdt = machine.WDT(timeout=10000) #timeout
 
 class Transmit:
     def __init__(self, server, name, wifi, token):
@@ -41,6 +43,7 @@ class Transmit:
                 print(f"Attempting wifi {self.wifi_index} {self.wifi[self.wifi_index]['ssid']} / {self.wifi[self.wifi_index]['password']}")
                 self.wlan.connect( self.wifi[self.wifi_index]['ssid'], self.wifi[self.wifi_index]['password'] )
                 for tries in range(0,10):
+                    wdt.feed()
                     time.sleep(1)
                     if self.wlan.isconnected():
                         print(f"Network {self.wlan.ifconfig()}")
@@ -60,12 +63,14 @@ class Transmit:
 
     def post( self, data ):
         print(f"Sending {data}") 
+        wdt.feed()
         try:
             response = urequests.post( self.server, data=data, headers=self.headers )
         except Exception as e:
             print( f"{data} to {self.server} Error: {e}" )
             return False ;
         finally:
+            wdt.feed()
             response.close()
         return True
     
@@ -109,7 +114,9 @@ def run(toml):
     # temperature flag
     inC = (toml['Celsius']) or (not toml['Fahrenheit'])
         
+
     # onewire
+    wdt.feed()
     try:
         ow = onewire.OneWire( machine.Pin(toml['pin']))
         ds = ds18x20.DS18X20(ow)
@@ -123,8 +130,10 @@ def run(toml):
         temperatures = []
         roms = ds.scan()
         print(roms);
+        wdt.feed()
         ds.convert_temp()
         time.sleep_ms(750)
+        wdt.feed()
         temperatures=[ds.read_temp(rom) for rom in roms]
         if not inC:
             # Farhenheit conversion
@@ -135,7 +144,9 @@ def run(toml):
             server.upload( "no data" )
 
         # delay and repeat
-        time.sleep( 60*toml['period'] )
+        for _ in range(60*toml['period'] ):
+            wdt.feed()
+            time.sleep(1)
 
 def main(sysargs):
     # Look for a config file location (else default) 
@@ -143,7 +154,9 @@ def main(sysargs):
     # Process TOML to get those baseline values
     # TOML file
 
+    wdt.feed()
     toml = read_toml()
+    wdt.feed()
     print("configuration",toml)
 
     try:

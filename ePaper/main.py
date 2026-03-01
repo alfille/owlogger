@@ -92,7 +92,7 @@ class Get:
             self.connect()
         gc.collect()
         try:
-            response = urequests( url, stream = True, headers = self.headers )
+            response = urequests.get( url, stream = True, headers = self.headers, timeout=15 )
             print( "Status code:", response.status_code)
             if response.status_code == 200:
                 response.raw.readinto(self.display.buffer)
