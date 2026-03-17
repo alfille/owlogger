@@ -7,11 +7,6 @@
 # Stores data in sqlite3
 #
 # by Paul H Alfille 2025 (Flask port)
-# Truly by Claude
-#   flask instead of http.server and invoke:
-# gunicorn -b localhost:8001 owlogger_flask:app
-#   mild cleanup of JWT
-#   sql improvements in using indexes properly
 # MIT License
 
 import sqlite3
@@ -22,7 +17,6 @@ from io import BytesIO
 import json
 import sys
 import tomllib
-import urllib
 from urllib.parse import urlparse
 from functools import wraps
 
@@ -529,13 +523,12 @@ def read_toml(args):
 
 
 def address_tuple(address_string, default_port):
-    address = address_string
-    if address.find("//") == -1:
-        address = f"http://{address}"
-    u = urllib.parse.urlparse(address)
+    u = urlparse(address_string)
+    if not u.scheme:                       # correct: detect missing scheme via attribute
+        u = urlparse(f"http://{address_string}")
     port = u.port or default_port
-    netloc = u.netloc.split(':')[0]
-    return netloc, port
+    host = u.hostname or "localhost"       # urlparse splits host/port cleanly; safe for IPv6
+    return host, port
 
 
 # ---------------------------------------------------------------------------
