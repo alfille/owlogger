@@ -2,6 +2,7 @@
 
 import machine
 import os
+import gc
 import sys
 import network
 import time
@@ -17,7 +18,7 @@ import jwt
 #----------
 server = None
 time.sleep(2) #for watchdog
-wdt = machine.WDT(timeout=10000) #timeout
+wdt = machine.WDT(timeout=30000) #timeout
 
 class Transmit:
     def __init__(self, server, name, wifi, token):
@@ -57,23 +58,25 @@ class Transmit:
         if not self.wlan.isconnected():
             self.connect()
         data = json.dumps( {'data': data_string, 'name':self.name } )
-        while not self.post(data):
+        for i in range(0,3):
+            if self.post(data):
+                break
             self.connect()
 
     def post( self, data ):
         print(f"Sending {data}") 
         wdt.feed()
+        response = None
+        success = False
         try:
-            response = urequests.post( self.server, data=data, headers=self.headers )
-            print("Sent")
-            success = True
+            response = urequests.post( self.server, data=data, headers=self.headers, timeout=20 )
+            success = ( 200 <= response.status_code < 300 )
         except Exception as e:
             print( f"{data} to {self.server} Error: {e}" )
-            success = False ;
         finally:
             wdt.feed()
-            if response:
-				response.close()
+            if response is not None:
+                response.close()
         return success
     
     def close( self ):
@@ -97,6 +100,7 @@ def read_toml():
     return toml
 
 def run(toml):
+    global server
     if 'wifi' not in toml:
         print("No Wifi settings in TOML file")
         sys.exit(1)
@@ -128,15 +132,17 @@ def run(toml):
     # Loop
     while True:
         # Get Temperatures
+        gc.collect()
+        wdt.feed()
         temperatures = []
         for i in range(0,3):
             roms = ds.scan()
             if roms:
-				ds.convert_temp()
-				time.sleep_ms(750)
-				temperatures=[ds.read_temp(rom) for rom in roms]
-				if len(temperatures)>0:
-					break
+                ds.convert_temp()
+                time.sleep_ms(750)
+                temperatures=[ds.read_temp(rom) for rom in roms]
+                if len(temperatures)>0:
+                    break
         if not inC:
             # Farhenheit conversion
             temperatures = [9*T/5+32 for T in temperatures]
