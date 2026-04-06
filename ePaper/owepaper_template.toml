@@ -1,0 +1,36 @@
+#########
+## NOTE #
+# 1. Copy to owepaper.toml
+# 2. Edit your specifics (server, wifi, token, etc
+# 3. Upload with rest of files to ESP32 device
+#########
+
+# ESP32 configuration file for owepaper client
+# in TOML format https://toml.io/en/
+#
+# See https://github.com/alfille/owlogger
+
+# blank lines and text after '#' comments are ignored
+
+# server location (external)
+# usually a valid subdomain address
+#server=https://owepaper.mypvs.net
+
+# username
+# to access owlogger database
+# Set with owlog_user on the server
+password="pass"
+
+# password
+# to access owlogger database
+# Choose a real, insightful name
+name="user"
+
+# period in minutes
+period=30
+
+[[wifi]]
+ssid="test"
+password="secret"
+
+# Can add more [[wifi]] sections

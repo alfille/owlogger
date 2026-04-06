@@ -16,6 +16,8 @@ import jwt
 
 #----------
 server = None
+time.sleep(2) #for watchdog
+wdt = machine.WDT(timeout=10000) #timeout
 
 class Transmit:
     def __init__(self, server, name, wifi, token):
@@ -36,31 +38,43 @@ class Transmit:
             secret = jwt.encode( {'name':self.name},token,algorithm='HS256')
             self.headers = { 'Authorization': f'Bearer {secret}', 'Content-Type': 'application/text'}
             
-    def upload( self, data_string ):
-        while not self.wlan.isconnected():
+    def connect( self ):
+        while True:
             try:
                 print(f"Attempting wifi {self.wifi_index} {self.wifi[self.wifi_index]['ssid']} / {self.wifi[self.wifi_index]['password']}")
                 self.wlan.connect( self.wifi[self.wifi_index]['ssid'], self.wifi[self.wifi_index]['password'] )
                 for tries in range(0,10):
+                    wdt.feed()
                     time.sleep(1)
                     if self.wlan.isconnected():
-                        break
+                        print(f"Network {self.wlan.ifconfig()}")
+                        return
             except Exception as e:
                 print(f"WIFI error {e}")
             self.wifi_index = (self.wifi_index + 1) % len(self.wifi)
-        print(f"Network {self.wlan.ifconfig()}")
+    
+    def upload( self, data_string ):
+        if not self.wlan.isconnected():
+            self.connect()
         data = json.dumps( {'data': data_string, 'name':self.name } )
-        self.post( data )
+        while not self.post(data):
+            self.connect()
 
     def post( self, data ):
         print(f"Sending {data}") 
+        wdt.feed()
         try:
             response = urequests.post( self.server, data=data, headers=self.headers )
+            print("Sent")
+            success = True
         except Exception as e:
-            print( f"{data} to {self.server} Error: {e}" ) 
+            print( f"{data} to {self.server} Error: {e}" )
+            success = False ;
         finally:
-			if response:
+            wdt.feed()
+            if response:
 				response.close()
+        return success
     
     def close( self ):
         try:
@@ -101,7 +115,9 @@ def run(toml):
     # temperature flag
     inC = (toml['Celsius']) or (not toml['Fahrenheit'])
         
+
     # onewire
+    wdt.feed()
     try:
         ow = onewire.OneWire( machine.Pin(toml['pin']))
         ds = ds18x20.DS18X20(ow)
@@ -130,7 +146,9 @@ def run(toml):
             server.upload( "no data" )
 
         # delay and repeat
-        time.sleep( 60*toml['period'] )
+        for _ in range(60*toml['period'] ):
+            wdt.feed()
+            time.sleep(1)
 
 def main(sysargs):
     # Look for a config file location (else default) 
@@ -138,7 +156,9 @@ def main(sysargs):
     # Process TOML to get those baseline values
     # TOML file
 
+    wdt.feed()
     toml = read_toml()
+    wdt.feed()
     print("configuration",toml)
 
     try:

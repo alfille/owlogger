@@ -32,6 +32,14 @@ import tomllib
 import urllib
 from urllib.parse import urlparse
 
+# for Image
+try:
+    from PIL import Image, ImageDraw
+except:
+    print("PIL (Pillow) module needs to be installed")
+    print("either 'pip install Pillow' or 'apt install python3-pil'")
+    sys.exit(1)
+
 # for authentification
 try:
     import jwt
@@ -72,7 +80,11 @@ class OWLogServer(BaseHTTPRequestHandler):
                 | "/owlogger.css"       \
                 : return self.file_return("text/css")
             case  "/owlogger.css"       \
-                : return self.file_return("image/x-icon") 
+                : return self.file_return("image/x-icon")
+            case  "/7in5"               \
+                : return self.frame_buffer(800,480)
+            case  "test"               \
+                : return self.frame_png(800,480)
 
         # test URL -- only queries allowed
         if len(self.path) > 1:
@@ -108,6 +120,8 @@ class OWLogServer(BaseHTTPRequestHandler):
         # parse url for type if present
         if "type" in u:
             match u["type"][0]:
+                case "week":
+                    self.type = "week"
                 case "plot":
                     self.type = "plot"
                 case "stat":
@@ -186,7 +200,11 @@ class OWLogServer(BaseHTTPRequestHandler):
 
     def _make_html( self, daystart ):
         # Get corresponding database entries for this date
-        dData = json.dumps(self.db.day_data( daystart ))
+        match self.type:
+            case "week":
+                dData = json.dumps(self.db.week_data( daystart ))
+            case _:
+                dData = json.dumps(self.db.day_data( daystart ))
 
         # Get days with data
         dDays =  [ d[0] for d in self.db.distinct_days( daystart )]
@@ -218,6 +236,7 @@ class OWLogServer(BaseHTTPRequestHandler):
                 <a class="button" id="data" href="#" onclick="JumpTo.type('data')">Data</a>
                 <a class="button" id="stat" href="#" onclick="JumpTo.type('stat')">Stats</a>
                 <a class="button" id="plot" href="#" onclick="JumpTo.type('plot')">Graph</a>
+                <a class="button" id="week" href="#" onclick="JumpTo.type('week')">Week</a>
                 <span id="date"></span>
                 <span id="time"></span>
             </div>
@@ -296,6 +315,64 @@ class OWLogServer(BaseHTTPRequestHandler):
             return False ; # password ok!
             
         return True # Bad 
+        
+    def frame_png( self, width=800, height=480 ):
+        img = self.create_image( width, height )
+
+        # 2. Convert to raw bytes (48,000 bytes)
+        raw_buffer = img.tobytes()
+
+        # 3. Save to PNG for the Browser
+        # Even though the image is 1-bit, saving as PNG makes it browser-readable
+        img_byte_arr = io.BytesIO()
+        img.save(img_byte_arr, format='PNG')
+        img_bytes = img_byte_arr.getvalue()
+
+        # 4. Send Response
+        self.send_response(200)
+        self.send_header('Content-type', 'image/png')
+        self.send_header('Content-Length', str(len(img_bytes)))
+        self.best_practice()
+
+        # 4. Write the binary data to the stream
+        self.wfile.write(img_bytes)
+        print(f"Sent {len(img_bytes)} bytes to {self.client_address}")
+
+    def frame_buffer( self, width=800, height=480 ):
+        # Check access
+        if self._access_forbidden():
+            return self._send_auth_challenge()
+
+        img = self.create_image( width, height )
+
+        # 2. Convert to raw bytes (48,000 bytes)
+        raw_buffer = img.tobytes()
+
+        # 3. Send HTTP Headers
+        self.send_response(200)
+        self.send_header('Content-type', 'application/octet-stream')
+        self.send_header('Content-Length', str(len(raw_buffer)))
+        self.best_practice()
+
+        # 4. Write the binary data to the stream
+        self.wfile.write(raw_buffer)
+        print(f"Sent {len(raw_buffer)} bytes to {self.client_address}")
+
+    def create_image( self, width=800, height=480 ):
+        white = 1
+        black = 0
+
+        # Create monochrome image
+        img = Image.new('1', (width, height), color=white) # 1 = White
+        draw = ImageDraw.Draw(img)
+        
+            # --- Add your drawing logic here ---
+        draw.rectangle([20, 20, 780, 460], outline=0, width=5)
+        draw.text((350, 230), "REMOTE DASHBOARD", fill=black)
+        # -----------------------------------
+
+        return img
+        
 
 class Database:
     # sqlite3 interface
@@ -366,6 +443,14 @@ class Database:
         nextday = day + datetime.timedelta(days=1)
         records = self.command( """SELECT TIME(date) as t, source, value FROM datalog WHERE DATE(date) BETWEEN DATE(?) AND DATE(?) ORDER BY t""", (day.isoformat(),nextday.isoformat()), True )
         #print(records)
+        return records
+        
+    def week_data( self, day ):
+        # Get records from a full day
+        nextday = day + datetime.timedelta(days=1)
+        firstday = day + datetime.timedelta(days=-6)
+        records = self.command( """SELECT strftime('%J',date)-strftime("%J",?) as t, source, value FROM datalog WHERE DATE(date) BETWEEN DATE(?) AND DATE(?) ORDER BY t""", (firstday.isoformat(),firstday.isoformat(),nextday.isoformat()), True )
+        print(records)
         return records
         
     def distinct_days( self, day ):
@@ -479,7 +564,7 @@ def main(sysargs):
     
     config = "/etc/owlogger/owlogger.toml"
     # config
-    parser.add_argument("--config",
+    parser.add_argument("-c", "--config",
         required=False,
         default=config,
         dest="config",
