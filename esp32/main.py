@@ -21,6 +21,7 @@ class Transmit:
     def __init__(self, server, name, wifi, token):
         self.server = server
         self.name = name
+        network.country("US")
         self.wlan = network.WLAN(network.STA_IF)
         self.wlan.active(True)
         self.wlan.config( reconnects=3)
@@ -36,7 +37,6 @@ class Transmit:
             self.headers = { 'Authorization': f'Bearer {secret}', 'Content-Type': 'application/text'}
             
     def upload( self, data_string ):
-        self.wlan.active(True)
         while not self.wlan.isconnected():
             try:
                 print(f"Attempting wifi {self.wifi_index} {self.wifi[self.wifi_index]['ssid']} / {self.wifi[self.wifi_index]['password']}")
@@ -51,7 +51,6 @@ class Transmit:
         print(f"Network {self.wlan.ifconfig()}")
         data = json.dumps( {'data': data_string, 'name':self.name } )
         self.post( data )
-        self.wlan.active(False)
 
     def post( self, data ):
         print(f"Sending {data}") 
@@ -59,13 +58,15 @@ class Transmit:
             response = urequests.post( self.server, data=data, headers=self.headers )
         except Exception as e:
             print( f"{data} to {self.server} Error: {e}" ) 
+        finally:
+			if response:
+				response.close()
     
     def close( self ):
         try:
             self.wlan.disconnect()
         except Exception as e:
             print(f"Disconnect error {e}")
-        self.wlan.active(False)
 
 def read_toml():
     try:
@@ -112,10 +113,14 @@ def run(toml):
     while True:
         # Get Temperatures
         temperatures = []
-        roms = ds.scan()
-        ds.convert_temp()
-        time.sleep_ms(750)
-        temperatures=[ds.read_temp(rom) for rom in roms]
+        for i in range(0,3):
+            roms = ds.scan()
+            if roms:
+				ds.convert_temp()
+				time.sleep_ms(750)
+				temperatures=[ds.read_temp(rom) for rom in roms]
+				if len(temperatures)>0:
+					break
         if not inC:
             # Farhenheit conversion
             temperatures = [9*T/5+32 for T in temperatures]
