@@ -80,6 +80,8 @@ def _access_forbidden():
     try:
         decoded_credentials = base64.b64decode(encoded_credentials).decode('utf-8')
         username, password = decoded_credentials.split(':', 1)
+    except  ExpiredSignatureError:
+        print("Token has expired!")    
     except (ValueError, UnicodeDecodeError) as e:
         print(f"Error decoding credentials: {e}")
         return True

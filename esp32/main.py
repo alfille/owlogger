@@ -5,6 +5,7 @@ import os
 import gc
 import sys
 import network
+import ntptime
 import time
 import json
 import onewire
@@ -18,7 +19,10 @@ import jwt
 #----------
 server = None
 time.sleep(2) #for watchdog
-wdt = machine.WDT(timeout=30000) #timeout
+wdt = machine.WDT(timeout=60000) #timeout
+token_timeout = 60*60 #1hr
+ntp_host = "time.google.com"
+epoch_correction = 946684800
 
 class Transmit:
     def __init__(self, server, name, wifi, token):
@@ -31,13 +35,8 @@ class Transmit:
         
         self.wifi = wifi
         self.wifi_index = 0
-
-        # JWT token?
-        if token == None:
-            self.headers = { "Content-Type": "application/text"}
-        else:
-            secret = jwt.encode( {'name':self.name},token,algorithm='HS256')
-            self.headers = { 'Authorization': f'Bearer {secret}', 'Content-Type': 'application/text'}
+        
+        self.token = token
             
     def connect( self ):
         while True:
@@ -49,6 +48,13 @@ class Transmit:
                     time.sleep(1)
                     if self.wlan.isconnected():
                         print(f"Network {self.wlan.ifconfig()}")
+                        for i in range(0,3):
+                            wdt.feed()
+                            try:
+                                ntptime.settime(server=ntp_host)
+                                return
+                            except:
+                                pass
                         return
             except Exception as e:
                 print(f"WIFI error {e}")
@@ -57,6 +63,21 @@ class Transmit:
     def upload( self, data_string ):
         if not self.wlan.isconnected():
             self.connect()
+
+        # JWT token?
+        if self.token == None:
+            self.headers = { "Content-Type": "application/text"}
+        else:
+            now = time.time() + epoch_correction
+            secret = jwt.encode( {
+                'name':self.name,
+                'iat':now,
+                'exp':now+token_timeout,
+                },
+                self.token,
+                algorithm='HS256'
+                )
+            self.headers = { 'Authorization': f'Bearer {secret}', 'Content-Type': 'application/text'}
         data = json.dumps( {'data': data_string, 'name':self.name } )
         for i in range(0,3):
             if self.post(data):
