@@ -1,7 +1,6 @@
 # ESP32 owpost program
 
 import machine
-import os
 import gc
 import sys
 import network
@@ -13,7 +12,6 @@ import ds18x20
 import urequests
 
 import tomli
-import hmac
 import jwt
 
 #----------
@@ -23,12 +21,13 @@ wdt = machine.WDT(timeout=60000) #timeout
 token_timeout = 60*60 #1hr
 ntp_host = "time.google.com"
 epoch_correction = 946684800
+wifi_region = "US"
 
 class Transmit:
     def __init__(self, server, name, wifi, token):
         self.server = server
         self.name = name
-        network.country("US")
+        network.country(wifi_region)
         self.wlan = network.WLAN(network.STA_IF)
         self.wlan.active(True)
         self.wlan.config( reconnects=3)
@@ -39,9 +38,9 @@ class Transmit:
         self.token = token
             
     def connect( self ):
-        while True:
+        for j in range(0,10):
             try:
-                print(f"Attempting wifi {self.wifi_index} {self.wifi[self.wifi_index]['ssid']} / {self.wifi[self.wifi_index]['password']}")
+                print(f"Attempting wifi {self.wifi_index} {self.wifi[self.wifi_index]['ssid']}")
                 self.wlan.connect( self.wifi[self.wifi_index]['ssid'], self.wifi[self.wifi_index]['password'] )
                 for tries in range(0,10):
                     wdt.feed()
@@ -55,10 +54,13 @@ class Transmit:
                                 return
                             except:
                                 pass
+                        print("NTP not set")
                         return
             except Exception as e:
                 print(f"WIFI error {e}")
             self.wifi_index = (self.wifi_index + 1) % len(self.wifi)
+        print("Cannot connect");
+        time.sleep(100) # trigger wdt to reset
     
     def upload( self, data_string ):
         if not self.wlan.isconnected():
@@ -114,7 +116,7 @@ def read_toml():
         print(f"Cannot open TOML configuration file: owesp32.toml Error: {e}")
         sys.exit(1)
     toml.setdefault('name'       ,'esp32' );
-    toml.setdefault('pin'        ,'12'    );
+    toml.setdefault('pin'        , 12     );
     toml.setdefault('Fahrenheit' , True   );
     toml.setdefault('Celsius'    , False  );
     toml.setdefault('period'     , 15     );
@@ -177,7 +179,7 @@ def run(toml):
             wdt.feed()
             time.sleep(1)
 
-def main(sysargs):
+def main():
     # Look for a config file location (else default) 
     # read it in TOML format
     # Process TOML to get those baseline values
@@ -195,6 +197,6 @@ def main(sysargs):
             server.close()
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+    sys.exit(main())
 else:
     print("Standalone program")
