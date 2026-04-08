@@ -19,7 +19,7 @@ server = None
 time.sleep(2) #for watchdog
 wdt = machine.WDT(timeout=60000) #timeout
 token_timeout = 60*60 #1hr
-ntp_host = "time.google.com"
+ntptime.host = "pool.ntp.org"
 epoch_correction = 946684800
 wifi_region = "US"
 
@@ -50,9 +50,10 @@ class Transmit:
                         for i in range(0,3):
                             wdt.feed()
                             try:
-                                ntptime.settime(server=ntp_host)
+                                ntptime.settime()
                                 return
-                            except:
+                            except Exception as e:
+                                print(f"NTP error {e}")
                                 pass
                         print("NTP not set")
                         return
