@@ -44,7 +44,7 @@ class Transmit:
                 self.wlan.connect( self.wifi[self.wifi_index]['ssid'], self.wifi[self.wifi_index]['password'] )
                 for tries in range(0,10):
                     wdt.feed()
-                    time.sleep(1)
+                    time.sleep(5)
                     if self.wlan.isconnected():
                         print(f"Network {self.wlan.ifconfig()}")
                         for i in range(0,3):
