@@ -80,8 +80,6 @@ def _access_forbidden():
     try:
         decoded_credentials = base64.b64decode(encoded_credentials).decode('utf-8')
         username, password = decoded_credentials.split(':', 1)
-    except  ExpiredSignatureError:
-        print("Token has expired!")    
     except (ValueError, UnicodeDecodeError) as e:
         print(f"Error decoding credentials: {e}")
         return True
@@ -195,14 +193,14 @@ ALLOWED_FILES = {
 @app.route('/<path:filename>')
 def serve_static(filename):
     if filename not in ALLOWED_FILES:
-        return Response(f'<h1>404 Not Found</h1><p>{filename}</p>', status=404, content_type='text/html')
+        return best_practice_headers(Response(f'<h1>404 Not Found</h1><p>{filename}</p>', status=404, content_type='text/html'))
 
     mime = ALLOWED_FILES[filename]
     try:
         with open(filename, 'rb') as f:
             data = f.read()
     except FileNotFoundError:
-        return Response(f'File not found: {filename}', status=404)
+        return best_practice_headers(Response(f'File not found: {filename}', status=404))
 
     resp = Response(data, status=200, content_type=mime)
     resp.headers['Cache-Control'] = 'max-age=31536000'
@@ -217,8 +215,8 @@ def _create_image(width=800, height=480):
     white, black = 1, 0
     img = Image.new('1', (width, height), color=white)
     draw = ImageDraw.Draw(img)
-    draw.rectangle([20, 20, 780, 460], outline=0, width=5)
-    draw.text((350, 230), "REMOTE DASHBOARD", fill=black)
+    draw.rectangle([20, 20, width-20, height-20], outline=0, width=5)
+    draw.text((width//2, height//2), "REMOTE DASHBOARD", fill=black)
     return img
 
 
@@ -333,14 +331,14 @@ def _make_html(daystart, page_type):
     </body>
     <script>
         var globals = {{
-            dayData:     JSON.parse('{dData}'),
+            dayData:     {dData},
             goodDays:    {dDays},
             goodMonths:  {mDays},
             goodYears:   {yDays},
             daystart:    new Date("{daystart}"),
             page_type:   "{page_type}",
-            header_date: "{datetime.datetime.now().strftime("%m/%d/%Y")}",
-            header_time: "{datetime.datetime.now().strftime("%H:%M")}",
+            header_date: "{datetime.datetime.now().strftime('%m/%d/%Y')}",
+            header_time: "{datetime.datetime.now().strftime('%H:%M')}",
         }};
     </script>
 </html>"""
@@ -354,10 +352,17 @@ def _make_html(daystart, page_type):
 @require_jwt
 def receive_data():
     body = request.get_json(force=True)
-    if debug:
-        print("POST", body)
-    db.add(body['name'], body['data'])
-    resp = Response('', status=200, content_type='text/html')
+    if body:
+        if debug:
+            print("POST", body)
+        name = body.get('name', 'unknown')
+        data = body.get('data', '')
+        if data:
+            db.add(name,data)
+        resp = Response('', status=200, content_type='text/html')
+    else:
+        resp = Response('Bad Request', status=400)
+
     return best_practice_headers(resp)
 
 
@@ -387,7 +392,12 @@ class Database:
                 username TEXT PRIMARY KEY,
                 password_hash TEXT NOT NULL
             );""")
-
+        try:
+            with sqlite3.connect(self.database) as conn:
+                conn.execute('pragma journal_mode=wal')
+        except sqlite3.Error as e:
+            print(f"Database error setting WAL mode <{self.database}>: {e}")
+    
     def get_version(self):
         try:
             records = self.command("""SELECT version FROM version WHERE id = 1""", None, True)
@@ -498,9 +508,7 @@ class Database:
 # ---------------------------------------------------------------------------
 
 def set_password(database, username, password):
-    database.set_password(
-        username,
-        bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'))
+    database.set_password(username, database.hash_password(password))
 
 
 # ---------------------------------------------------------------------------
@@ -521,6 +529,7 @@ def read_toml(args):
             sys.exit(1)
         except Exception as e:
             print(f"Cannot open TOML configuration file: {args.config}")
+            sys.exit(1)
     return {}
 
 
@@ -595,6 +604,9 @@ def main(sysargs):
 
     jwt_token = getattr(args, 'token', None)
     no_password = args.no_password
+    
+    if jwt_token is None and not no_password:
+        print("Warning -- missing JWT token. Set no_password if this is intentional")
 
     addr, port = address_tuple(args.address, default_port)
     db = Database(args.database)
@@ -607,5 +619,3 @@ def main(sysargs):
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
-else:
-    print("Standalone program — import as WSGI app via `app`")
