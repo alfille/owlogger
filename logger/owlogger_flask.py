@@ -529,7 +529,7 @@ def read_toml(args):
             sys.exit(1)
         except Exception as e:
             print(f"Cannot open TOML configuration file: {args.config}")
-            sys.exit(1)
+            return ({})
     return {}
 
 
