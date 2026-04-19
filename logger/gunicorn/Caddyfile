@@ -1,0 +1,54 @@
+# Caddyfile
+# ── Install ───────────────────────────────────────────────────────────────
+#   sudo cp Caddyfile /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+#
+# ── Socket permissions ────────────────────────────────────────────────────
+# The Caddy process must be able to connect to the socket.
+#
+#   Shared group: set RuntimeDirectoryMode=0770 in owlogger.service
+#     and add both owlogger and caddy to a shared group (e.g. www-data).
+#
+# The socket path here must match `bind` in gunicorn.conf.py.
+
+owloggerf.alfille.org {                  # ← replace with your real domain
+
+    # ── Reverse proxy ─────────────────────────────────────────────────────
+    reverse_proxy unix//run/owlogger/owlogger.sock {
+        # Forward real client information to Flask
+        header_up Host              {host}
+        header_up X-Real-IP         {remote_host}
+        header_up X-Forwarded-For   {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+
+        # Match gunicorn's timeout settings
+        transport http {
+            dial_timeout       10s
+            response_header_timeout 30s
+        }
+    }
+
+    # ── TLS ───────────────────────────────────────────────────────────────
+    # For a local/private server with a self-signed cert instead:
+    #   tls internal
+
+    # ── Security headers ──────────────────────────────────────────────────
+    # These complement the headers Flask already adds per-response.
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options    "nosniff"
+        Referrer-Policy           "strict-origin-when-cross-origin"
+        # Remove the Caddy server banner
+        -Server
+    }
+
+    # ── Logging ───────────────────────────────────────────────────────────
+    log {
+        output file /var/log/caddy/owlogger.log {
+            roll_size     10mb
+            roll_keep     5
+            roll_keep_for 720h
+        }
+        format json
+    }
+}

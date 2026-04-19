@@ -1,0 +1,87 @@
+# /etc/systemd/system/owlogger.service
+#
+# Systemd unit: owlogger_flask under gunicorn, communicating via UNIX socket.
+# Caddy (or another reverse proxy) connects to the socket to serve HTTPS.
+#
+# ── First-time setup ──────────────────────────────────────────────────────
+#
+#   # Create a dedicated system user
+#   sudo useradd --system --no-create-home --shell /usr/sbin/nologin owlogger
+#
+#   # Create directories
+#   sudo mkdir -p /opt/owlogger /etc/owlogger /var/lib/owlogger
+#
+#   # Install application files
+#   sudo cp owlogger_flask.py gunicorn.conf.py /opt/owlogger/
+#   sudo cp owlogger_flask.css owlogger.js air-datepicker.* /opt/owlogger/
+#
+#   # Install and secure the secrets file (edit token before this step)
+#   sudo cp owlogger.env /etc/owlogger/owlogger.env
+#   sudo chown owlogger:owlogger /etc/owlogger/owlogger.env
+#   sudo chmod 600               /etc/owlogger/owlogger.env
+#
+#   # Set ownership
+#   sudo chown -R owlogger:owlogger /opt/owlogger /var/lib/owlogger
+#
+#   # Install and start the service
+#   sudo cp owlogger.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now owlogger
+#
+# ── Operations ────────────────────────────────────────────────────────────
+#   sudo systemctl status  owlogger
+#   sudo journalctl -u owlogger -f
+#   sudo systemctl restart owlogger
+
+[Unit]
+Description=OWLoggerf 1-wire sensor data server (Flask + Gunicorn + UNIX socket)
+After=network.target caddy.service
+Requires=caddy.service
+BindTo=caddy.service
+
+[Service]
+Type=notify
+
+# ── Identity ──────────────────────────────────────────────────────────────
+User=www-data
+Group=www-data
+
+# ── Working directory ─────────────────────────────────────────────────────
+# owlogger_flask.py, gunicorn.conf.py, and static assets live here.
+WorkingDirectory=/usr/local/lib/owlogger
+
+# ── Secrets ───────────────────────────────────────────────────────────────
+# Keeps credentials out of the world-readable unit file.
+EnvironmentFile=/etc/owlogger/owlogger.env
+
+# ── UNIX socket directory ─────────────────────────────────────────────────
+# systemd creates /run/owlogger/ before ExecStart, owned by owlogger,
+# mode 0750 so Caddy (running as its own user) can access the socket if
+# added to the owlogger group, or via a shared 'www-data' group.
+# The directory is removed automatically on service stop.
+RuntimeDirectory=owlogger
+RuntimeDirectoryMode=0750
+
+# ── Start ─────────────────────────────────────────────────────────────────
+ExecStart=/usr/bin/gunicorn \
+    --config /usr/local/lib/owlogger/gunicorn.conf.py \
+    owlogger_flask:app
+
+# ── Restart policy ────────────────────────────────────────────────────────
+Restart=on-failure
+RestartSec=5s
+
+# ── Logging ───────────────────────────────────────────────────────────────
+# gunicorn.conf.py sets accesslog/errorlog to "-" (stdout/stderr).
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=owloggerF
+
+# ── Hardening ─────────────────────────────────────────────────────────────
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/owlogger
+
+[Install]
+WantedBy=multi-user.target

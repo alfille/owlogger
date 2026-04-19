@@ -8,6 +8,39 @@
 #
 # by Paul H Alfille 2025 (Flask port)
 # MIT License
+#
+# ── Modes ────────────────────────────────────────────────────────────────────
+#
+#  Standalone (Flask dev server, direct TCP):
+#    python owlogger_flask.py [options]
+#
+#  Production (gunicorn → UNIX socket ← Caddy reverse proxy):
+#    gunicorn -c gunicorn.conf.py owlogger_flask:app
+#    (managed by owlogger.service; Caddy configured in Caddyfile)
+#
+# ── Configuration priority (highest → lowest) ─────────────────────────────
+#
+#  Standalone:
+#    CLI arguments  →  env vars  →  TOML file  →  built-in defaults
+#
+#  Gunicorn / systemd:
+#    env vars (from systemd EnvironmentFile=)  →  TOML file  →  built-in defaults
+#    (CLI arguments are unavailable; gunicorn owns sys.argv)
+#
+# ── Environment variables (set in /etc/owlogger/owlogger.env) ─────────────
+#
+#  OWLOGGER_CONFIG       path to a non-default TOML file
+#  OWLOGGER_DATABASE     path to SQLite database file
+#  OWLOGGER_TOKEN        JWT secret for POST/PUT endpoints
+#  OWLOGGER_DEBUG        1 / true / yes  →  enable debug logging
+#  OWLOGGER_NO_PASSWORD  1 / true / yes  →  disable Basic-Auth
+#  OWLOGGER_ADDRESS      host:port for standalone mode only
+#
+# ── TOML keys ─────────────────────────────────────────────────────────────
+#
+#  address, token, database, debug, no_password
+#
+# ─────────────────────────────────────────────────────────────────────────────
 
 import sqlite3
 import argparse
@@ -15,6 +48,7 @@ import base64
 import datetime
 from io import BytesIO
 import json
+import os
 import sys
 import tomllib
 from urllib.parse import urlparse
@@ -54,11 +88,132 @@ except ImportError:
 
 app = Flask(__name__)
 
-# --- Global config (set in main()) ---
-debug = False
-db = None
-jwt_token = None
+# ---------------------------------------------------------------------------
+# Globals (set by init_app() before any request is served)
+# ---------------------------------------------------------------------------
+debug       = False
+db          = None
+jwt_token   = None
 no_password = False
+
+_DEFAULT_CONFIG  = "/etc/owlogger/owlogger.toml"
+_DEFAULT_PORT    = 8001
+_DEFAULT_ADDRESS = f"localhost:{_DEFAULT_PORT}"
+_DEFAULT_DB      = "./logger_data.db"
+
+
+# ---------------------------------------------------------------------------
+# Config helpers
+# ---------------------------------------------------------------------------
+
+def _read_toml(config_path):
+    """Load a TOML file; return {} if missing or path is None."""
+    if not config_path:
+        return {}
+    try:
+        with open(config_path, "rb") as fh:
+            return tomllib.load(fh)
+    except FileNotFoundError:
+        return {}
+    except tomllib.TOMLDecodeError as e:
+        with open(config_path, "rb") as fh:
+            contents = fh.read()
+        for i, line in enumerate(contents.decode("utf-8").split("\n"), 1):
+            print(f"{i:3d}. {line}")
+        print(f"Trouble reading configuration file {config_path}: {e}")
+        sys.exit(1)
+
+
+def _env_bool(name):
+    """True when env var is set to 1 / true / yes (case-insensitive)."""
+    return os.environ.get(name, "").lower() in ("1", "true", "yes")
+
+
+def _address_tuple(address_string, default_port):
+    """Parse 'host:port' or bare 'host' into (host, port)."""
+    if "://" not in address_string:
+        u = urlparse(f"http://{address_string}")
+    else:
+        u = urlparse(address_string)
+    host = u.hostname or "localhost"
+    port = u.port or default_port
+    return host, port
+
+
+# ---------------------------------------------------------------------------
+# Shared initialisation — called by main() AND by gunicorn's on_starting hook
+# ---------------------------------------------------------------------------
+
+def init_app(
+    *,
+    config_path=None,
+    database=None,
+    token=None,
+    address=None,
+    enable_debug=False,
+    enable_no_password=False,
+):
+    """
+    Initialise module-level globals.
+
+    Resolution order for every setting:
+        explicit kwarg  →  env var  →  TOML value  →  built-in default
+
+    Called from two places:
+      • main()         – standalone; passes values parsed from the CLI
+      • on_starting()  – gunicorn hook; all kwargs are None so env vars
+                         and the TOML file drive configuration
+
+    Returns (host, port) — only used by the standalone Flask server.
+    """
+    global debug, db, jwt_token, no_password
+
+    # ── TOML ──────────────────────────────────────────────────────────────
+    cfg_path = config_path or os.environ.get("OWLOGGER_CONFIG") or _DEFAULT_CONFIG
+    toml     = _read_toml(cfg_path)
+
+    # ── debug ──────────────────────────────────────────────────────────────
+    debug = enable_debug or _env_bool("OWLOGGER_DEBUG") or toml.get("debug", False)
+
+    # ── no_password ────────────────────────────────────────────────────────
+    no_password = (
+        enable_no_password
+        or _env_bool("OWLOGGER_NO_PASSWORD")
+        or toml.get("no_password", False)
+    )
+
+    # ── JWT token ──────────────────────────────────────────────────────────
+    jwt_token = token or os.environ.get("OWLOGGER_TOKEN") or toml.get("token")
+    if jwt_token is None and not no_password:
+        print(
+            "Warning -- missing JWT token for POST/PUT. "
+            "Supply --token, OWLOGGER_TOKEN, or set no_password if intentional."
+        )
+
+    # ── database ───────────────────────────────────────────────────────────
+    db_path = (
+        database
+        or os.environ.get("OWLOGGER_DATABASE")
+        or toml.get("database")
+        or _DEFAULT_DB
+    )
+    db = Database(db_path)
+
+    if debug:
+        print(
+            f"[init_app] config={cfg_path!r} db={db_path!r} "
+            f"debug={debug} no_password={no_password} "
+            f"jwt={'set' if jwt_token else 'unset'}"
+        )
+
+    # ── address (standalone only; gunicorn binds via gunicorn.conf.py) ────
+    addr_str = (
+        address
+        or os.environ.get("OWLOGGER_ADDRESS")
+        or toml.get("address")
+        or _DEFAULT_ADDRESS
+    )
+    return _address_tuple(addr_str, _DEFAULT_PORT)
 
 
 # ---------------------------------------------------------------------------
@@ -88,10 +243,7 @@ def _access_forbidden():
     if len(results) != 1:
         return True
 
-    if bcrypt.checkpw(password.encode('utf-8'), results[0][0].encode('utf-8')):
-        return False
-
-    return True
+    return not bcrypt.checkpw(password.encode('utf-8'), results[0][0].encode('utf-8'))
 
 
 def _auth_challenge():
@@ -122,33 +274,22 @@ def require_basic_auth(f):
 def _extract_bearer_token(auth_header):
     """
     Parse a Bearer token from an Authorization header string.
-    Returns (token, error_message):
-      - (token_str, None)  on success
-      - (None, message)    on any malformed input
-    Handles: missing header, wrong scheme, missing token,
-             extra whitespace, and multi-part garbage.
+    Returns (token_str, None) on success or (None, error_message) on failure.
     """
     if not auth_header:
         return None, "Authorization header missing"
-
     parts = auth_header.split()
-
     if len(parts) == 0:
         return None, "Authorization header is empty"
-
     if parts[0].lower() != 'bearer':
         return None, f"Unsupported auth scheme '{parts[0]}'; expected Bearer"
-
     if len(parts) == 1:
         return None, "Bearer token missing after scheme"
-
     if len(parts) > 2:
         return None, "Malformed Authorization header: unexpected extra fields"
-
     token = parts[1]
     if not token:
         return None, "Bearer token is empty"
-
     return token, None
 
 
@@ -193,15 +334,15 @@ ALLOWED_FILES = {
 @app.route('/<path:filename>')
 def serve_static(filename):
     if filename not in ALLOWED_FILES:
-        return best_practice_headers(Response(f'<h1>404 Not Found</h1><p>{filename}</p>', status=404, content_type='text/html'))
-
+        return best_practice_headers(
+            Response(f'<h1>404 Not Found</h1><p>{filename}</p>', status=404, content_type='text/html')
+        )
     mime = ALLOWED_FILES[filename]
     try:
         with open(filename, 'rb') as f:
             data = f.read()
     except FileNotFoundError:
         return best_practice_headers(Response(f'File not found: {filename}', status=404))
-
     resp = Response(data, status=200, content_type=mime)
     resp.headers['Cache-Control'] = 'max-age=31536000'
     return best_practice_headers(resp)
@@ -215,8 +356,8 @@ def _create_image(width=800, height=480):
     white, black = 1, 0
     img = Image.new('1', (width, height), color=white)
     draw = ImageDraw.Draw(img)
-    draw.rectangle([20, 20, width-20, height-20], outline=0, width=5)
-    draw.text((width//2, height//2), "REMOTE DASHBOARD", fill=black)
+    draw.rectangle([20, 20, width - 20, height - 20], outline=0, width=5)
+    draw.text((width // 2, height // 2), "REMOTE DASHBOARD", fill=black)
     return img
 
 
@@ -242,7 +383,7 @@ def frame_png():
     img.save(buf, format='PNG')
     buf.seek(0)
     resp = send_file(buf, mimetype='image/png')
-    print(f"Sent PNG")
+    print("Sent PNG")
     return best_practice_headers(resp)
 
 
@@ -253,12 +394,10 @@ def frame_png():
 @app.route('/')
 @require_basic_auth
 def index():
-    # Parse query parameters
-    date_str = request.args.get('date', datetime.date.today().isoformat())
+    date_str      = request.args.get('date', datetime.date.today().isoformat())
     page_type_raw = request.args.get('type', 'data')
-
-    type_map = {'week': 'week', 'plot': 'plot', 'stat': 'stat'}
-    page_type = type_map.get(page_type_raw, 'data')
+    type_map      = {'week': 'week', 'plot': 'plot', 'stat': 'stat'}
+    page_type     = type_map.get(page_type_raw, 'data')
 
     try:
         daystart = datetime.datetime.fromisoformat(date_str)
@@ -279,9 +418,9 @@ def _make_html(daystart, page_type):
     else:
         dData = json.dumps(db.day_data(daystart))
 
-    dDays  = [d[0] for d in db.distinct_days(daystart)]
-    mDays  = [f"{daystart.year}-{m[0]}-01" for m in db.distinct_months(daystart)]
-    yDays  = [f"{y[0]}-01-01" for y in db.distinct_years()]
+    dDays = [d[0] for d in db.distinct_days(daystart)]
+    mDays = [f"{daystart.year}-{m[0]}-01" for m in db.distinct_months(daystart)]
+    yDays = [f"{y[0]}-01-01" for y in db.distinct_years()]
 
     return f"""
 <!DOCTYPE html>
@@ -358,11 +497,10 @@ def receive_data():
         name = body.get('name', 'unknown')
         data = body.get('data', '')
         if data:
-            db.add(name,data)
+            db.add(name, data)
         resp = Response('', status=200, content_type='text/html')
     else:
         resp = Response('Bad Request', status=400)
-
     return best_practice_headers(resp)
 
 
@@ -397,7 +535,7 @@ class Database:
                 conn.execute('pragma journal_mode=wal')
         except sqlite3.Error as e:
             print(f"Database error setting WAL mode <{self.database}>: {e}")
-    
+
     def get_version(self):
         try:
             records = self.command("""SELECT version FROM version WHERE id = 1""", None, True)
@@ -422,8 +560,6 @@ class Database:
     def add(self, source, value):
         if debug:
             print(f"Adding _{value}")
-        # Fix #4: let SQLite set the timestamp in UTC via CURRENT_TIMESTAMP
-        # rather than passing a Python local-time string.
         self.command(
             """INSERT INTO datalog(source, value) VALUES (?,?)""",
             (source, value))
@@ -443,22 +579,19 @@ class Database:
                FROM datalog
                WHERE DATE(date) BETWEEN DATE(?) AND DATE(?) ORDER BY t""",
             (firstday.isoformat(), firstday.isoformat(), nextday.isoformat()), True)
-        if debug:  # Fix #6: was unconditional print()
+        if debug:
             print(records)
         return records
 
     def distinct_days(self, day):
         firstday = day + datetime.timedelta(days=-34)
-        lastday  = day + datetime.timedelta(days= 34)
+        lastday  = day + datetime.timedelta(days=34)
         return self.command(
             """SELECT DISTINCT DATE(date) as d FROM datalog
                WHERE DATE(date) BETWEEN DATE(?) AND DATE(?) ORDER BY d""",
             (firstday.isoformat(), lastday.isoformat()), True)
 
     def distinct_months(self, day):
-        # Fix #5: use a range comparison so idx_date can be used.
-        # strftime('%Y', date) = ? applies a function to every row,
-        # preventing index use entirely.
         year_start = f"{day.year}-01-01"
         year_end   = f"{day.year + 1}-01-01"
         return self.command(
@@ -483,21 +616,16 @@ class Database:
         try:
             with sqlite3.connect(self.database) as conn:
                 cursor = conn.cursor()
-                # Fix #3: guard with `is not None` so empty tuple () is not skipped
                 if value_tuple is not None:
                     cursor.execute(cmd, value_tuple)
                 else:
                     cursor.execute(cmd)
-                # Fix #1: fetchall() called inside the `with` block before
-                # the connection closes.
                 if fetch:
                     records = cursor.fetchall()
                 else:
                     records = None
                     conn.commit()
         except sqlite3.Error as e:
-            # Fix #7: was only catching OperationalError; now catches all
-            # SQLite errors (IntegrityError, ProgrammingError, etc.)
             print(f"Database error <{self.database}>: {e}")
             raise
         return records
@@ -512,111 +640,91 @@ def set_password(database, username, password):
 
 
 # ---------------------------------------------------------------------------
-# Config helpers (unchanged logic)
+# Gunicorn hook  (auto-discovered because this module is the gunicorn app)
 # ---------------------------------------------------------------------------
 
-def read_toml(args):
-    if hasattr(args, 'config') and args.config:
-        try:
-            with open(args.config, "rb") as c:
-                return tomllib.load(c)
-        except tomllib.TOMLDecodeError as e:
-            with open(args.config, "rb") as c:
-                contents = c.read()
-            for i, line in enumerate(contents.decode('utf-8').split("\n"), 1):
-                print(f"{i:3d}. {line}")
-            print(f"Trouble reading configuration file {args.config}: {e}")
-            sys.exit(1)
-        except Exception as e:
-            print(f"Cannot open TOML configuration file: {args.config}")
-            return ({})
-    return {}
-
-
-def address_tuple(address_string, default_port):
-    if "://" not in address_string:
-        u = urlparse(f"http://{address_string}")
-    else:
-        u = urlparse(address_string)
-
-    host = u.hostname or "localhost"       # urlparse splits host/port cleanly; safe for IPv6
-    port = u.port or default_port
-    return host, port
+def on_starting(server):
+    """
+    Called once by the gunicorn arbiter before any worker is forked.
+    Initialises globals in the master; every worker inherits them.
+    Configuration comes from env vars (injected by systemd) and/or TOML.
+    CLI arguments are unavailable here — gunicorn owns sys.argv.
+    """
+    init_app()
 
 
 # ---------------------------------------------------------------------------
-# Entry point
+# Entry point  (standalone / development)
 # ---------------------------------------------------------------------------
 
 def main(sysargs):
-    global debug, db, jwt_token, no_password
-
-    # Pass 1: find --config
+    # Pass 1: locate --config early so TOML values seed argparse defaults
     pre_parser = argparse.ArgumentParser(add_help=False)
-    default_config = "/etc/owlogger/owlogger.toml"
-    pre_parser.add_argument("-c", "--config",
-        required=False, default=default_config,
+    pre_parser.add_argument(
+        "-c", "--config",
+        required=False, default=None,
         dest="config", type=str, nargs="?",
-        help=f"Location of any configuration file. Optional default={default_config}")
+        help=f"TOML configuration file. Default={_DEFAULT_CONFIG}",
+    )
     pre_args, remaining_argv = pre_parser.parse_known_args()
 
-    toml = read_toml(pre_args)
+    toml = _read_toml(pre_args.config or _DEFAULT_CONFIG)
 
-    # Pass 2: full argument set
+    # Pass 2: full argument set, seeded from TOML where available
     parser = argparse.ArgumentParser(
         parents=[pre_parser],
         prog="owlogger_flask",
         description="Logs 1-wire data to a database that can be viewed on the web. Flask edition.",
-        epilog="Repository: https://github.com/alfille/owlogger")
-
-    default_port = 8001
-    default_address = f"localhost:{default_port}"
-    parser.add_argument('-a', '--address',
-        required=False, default=toml.get("address", default_address),
+        epilog="Repository: https://github.com/alfille/owlogger",
+    )
+    parser.add_argument(
+        '-a', '--address',
+        required=False, default=toml.get("address", _DEFAULT_ADDRESS),
         dest="address", nargs='?', type=str,
-        help=f'Server IP address and port (optional) default={default_address}')
-
-    parser.add_argument('-t', '--token',
-        required=False, default=toml.get("token", argparse.SUPPRESS),
+        help=f'Server IP address and port. Default={_DEFAULT_ADDRESS}',
+    )
+    parser.add_argument(
+        '-t', '--token',
+        required=False, default=toml.get("token"),
         dest="token", type=str, nargs='?',
-        help='Optional JWT secret token to match with owpost/generalpost.')
-
-    dbfile = "./logger_data.db"
-    parser.add_argument('-f', '--file',
-        required=False, default=toml.get("database", dbfile),
+        help='JWT secret token to match with owpost/generalpost.',
+    )
+    parser.add_argument(
+        '-f', '--file',
+        required=False, default=toml.get("database", _DEFAULT_DB),
         dest="database", type=str, nargs='?',
-        help=f'Database file location (optional) default={dbfile}')
-
-    parser.add_argument("-d", "--debug",
+        help=f'Database file location. Default={_DEFAULT_DB}',
+    )
+    parser.add_argument(
+        "-d", "--debug",
         required=False, default=toml.get("debug", False),
         dest="debug", action="store_true",
-        help="Print debugging information")
-
-    parser.add_argument("--no_password",
+        help="Print debugging information",
+    )
+    parser.add_argument(
+        "--no_password",
         required=False, default=toml.get("no_password", False),
         dest="no_password", action="store_true",
-        help="Turns off password protection")
+        help="Turns off password protection",
+    )
 
     args = parser.parse_args(remaining_argv)
 
-    debug = args.debug
-    if debug:
+    if args.debug:
         print("Debugging output on")
         print(sysargs, args)
 
-    jwt_token = getattr(args, 'token', None)
-    no_password = args.no_password
-    
-    if jwt_token is None and not no_password:
-        print("Warning -- missing JWT token. Set no_password if this is intentional")
+    host, port = init_app(
+        config_path=pre_args.config,
+        database=args.database,
+        token=args.token,
+        address=args.address,
+        enable_debug=args.debug,
+        enable_no_password=args.no_password,
+    )
 
-    addr, port = address_tuple(args.address, default_port)
-    db = Database(args.database)
-
-    print(f"Server started {addr}:{port}")
-    # Use Flask's built-in dev server; swap for gunicorn/waitress in production:
-    #   gunicorn -b addr:port owlogger_flask:app
-    app.run(host=addr, port=port, debug=debug)
+    print(f"Server started {host}:{port}")
+    app.run(host=host, port=port, debug=debug)
 
 
 if __name__ == "__main__":
