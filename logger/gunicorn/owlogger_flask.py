@@ -50,6 +50,7 @@ from io import BytesIO
 import json
 import os
 import sys
+import logging # forwarded to gunicorn
 import tomllib
 from urllib.parse import urlparse
 from functools import wraps
@@ -58,32 +59,28 @@ from functools import wraps
 try:
     from flask import Flask, request, Response, send_file
 except ImportError:
-    print("Flask module needs to be installed")
-    print("either 'pip install flask' or 'apt install python3-flask'")
+    logging.error("Flask module needs to be installed. Do 'pip install flask' or 'apt install python3-flask'")
     sys.exit(1)
 
 # for Image
 try:
     from PIL import Image, ImageDraw
 except ImportError:
-    print("PIL (Pillow) module needs to be installed")
-    print("either 'pip install Pillow' or 'apt install python3-pil'")
+    logging.error("PIL (Pillow) module needs to be installed. Do 'pip install Pillow' or 'apt install python3-pil'")
     sys.exit(1)
 
 # for authentication
 try:
     import jwt
 except ImportError:
-    print("JWT module needs to be installed")
-    print("either 'pip install PyJWT' or 'apt install python3-jwt'")
+    logging.error("JWT module needs to be installed. Do 'pip install PyJWT' or 'apt install python3-jwt'")
     sys.exit(1)
 
 # for encryption
 try:
     import bcrypt
 except ImportError:
-    print("bcrypt module needs to be installed")
-    print("either 'pip install bcrypt' or 'apt install python3-bcrypt'")
+    logging.error("bcrypt module needs to be installed. Do 'pip install bcrypt' or 'apt install python3-bcrypt'")
     sys.exit(1)
 
 app = Flask(__name__)
@@ -119,8 +116,8 @@ def _read_toml(config_path):
         with open(config_path, "rb") as fh:
             contents = fh.read()
         for i, line in enumerate(contents.decode("utf-8").split("\n"), 1):
-            print(f"{i:3d}. {line}")
-        print(f"Trouble reading configuration file {config_path}: {e}")
+            logging.info(f"{i:3d}. {line}")
+        logging.error(f"Trouble reading configuration file {config_path}: {e}")
         sys.exit(1)
 
 
@@ -188,7 +185,7 @@ def init_app(
     # ── JWT token ──────────────────────────────────────────────────────────
     jwt_token = token or os.environ.get("OWLOGGER_TOKEN") or toml.get("token")
     if jwt_token is None and not no_password:
-        print(
+        logging.warning(
             "Warning -- missing JWT token for POST/PUT. "
             "Supply --token, OWLOGGER_TOKEN, or set no_password if intentional."
         )
@@ -203,7 +200,7 @@ def init_app(
     db = Database(db_path)
 
     if debug:
-        print(
+        logging.debug(
             f"[init_app] config={cfg_path!r} db={db_path!r} "
             f"debug={debug} no_password={no_password} "
             f"jwt={'set' if jwt_token else 'unset'}"
@@ -239,7 +236,7 @@ def _access_forbidden():
         decoded_credentials = base64.b64decode(encoded_credentials).decode('utf-8')
         username, password = decoded_credentials.split(':', 1)
     except (ValueError, UnicodeDecodeError) as e:
-        print(f"Error decoding credentials: {e}")
+        logging.error(f"Error decoding credentials: {e}")
         return True
 
     results = db.get_password(username)
@@ -251,7 +248,7 @@ def _access_forbidden():
 
 def _auth_challenge():
     """Return a 401 Basic-Auth challenge response."""
-    print("Sending authentication challenge (401 Unauthorized)...")
+    logging.info("Sending authentication challenge (401 Unauthorized)...")
     return Response(
         '<h1>Authentication Required</h1><p>Please provide valid credentials.</p>',
         status=401,
@@ -304,12 +301,15 @@ def require_jwt(f):
             auth_header = request.headers.get('Authorization')
             h_token, err = _extract_bearer_token(auth_header)
             if err:
+				logging.warning(err)
                 return Response(err, status=401)
             try:
                 jwt.decode(h_token, jwt_token, algorithms=['HS256'])
             except jwt.ExpiredSignatureError:
+				logging.warning("Token expired")
                 return Response("Token expired", status=401)
             except jwt.InvalidTokenError:
+				logging.warning("Token invalid")
                 return Response("Token invalid", status=401)
         return f(*args, **kwargs)
     return decorated
@@ -375,7 +375,7 @@ def frame_buffer():
         content_type='application/octet-stream',
         headers={'Content-Length': str(len(raw_buffer))}
     )
-    print(f"Sent {len(raw_buffer)} bytes")
+    logging.debug(f"Sent {len(raw_buffer)} bytes")
     return best_practice_headers(resp)
 
 
@@ -386,7 +386,7 @@ def frame_png():
     img.save(buf, format='PNG')
     buf.seek(0)
     resp = send_file(buf, mimetype='image/png')
-    print("Sent PNG")
+    logging.debug("Sent PNG")
     return best_practice_headers(resp)
 
 
@@ -408,7 +408,7 @@ def index():
         daystart = datetime.datetime.combine(datetime.date.today(), datetime.time())
 
     if debug:
-        print(f"GET / date={date_str} type={page_type}")
+        logging.debug(f"GET / date={date_str} type={page_type}")
 
     html = _make_html(daystart, page_type)
     resp = Response(html, status=200, content_type='text/html')
@@ -499,7 +499,7 @@ def receive_data():
     body = request.get_json(force=True)
     if body:
         if debug:
-            print("POST", body)
+            logging.debug("POST", body)
         name = body.get('name', 'unknown')
         data = body.get('data', '')
         if data:
@@ -540,7 +540,7 @@ class Database:
             with sqlite3.connect(self.database) as conn:
                 conn.execute('pragma journal_mode=wal')
         except sqlite3.Error as e:
-            print(f"Database error setting WAL mode <{self.database}>: {e}")
+            logging.info(f"Database error setting WAL mode <{self.database}>: {e}")
 
     def get_version(self):
         try:
@@ -565,7 +565,7 @@ class Database:
 
     def add(self, source, value):
         if debug:
-            print(f"Adding _{value}")
+            loggin.debug(f"Adding _{value}")
         self.command(
             """INSERT INTO datalog(source, value) VALUES (?,?)""",
             (source, value))
@@ -586,7 +586,7 @@ class Database:
                WHERE DATE(date) BETWEEN DATE(?) AND DATE(?) ORDER BY t""",
             (firstday.isoformat(), firstday.isoformat(), nextday.isoformat()))
         if debug:
-            print(records)
+            logging.debug(records)
         return records
 
     def distinct_days(self, day):
@@ -629,7 +629,7 @@ class Database:
                     cursor.execute(cmd)
                 return cursor.fetchall()
         except sqlite3.Error as e:
-            print(f"Database error <{self.database}>: {e}")
+            logging.error(f"Database error <{self.database}>: {e}")
             raise
         return None # Should never be reached
 
@@ -644,7 +644,7 @@ class Database:
                     cursor.execute(cmd)
                 conn.commit()
         except sqlite3.Error as e:
-            print(f"Database error <{self.database}>: {e}")
+            logging.error(f"Database error <{self.database}>: {e}")
             raise
 
 
@@ -728,8 +728,8 @@ def main(sysargs):
     args = parser.parse_args(remaining_argv)
 
     if args.debug:
-        print("Debugging output on")
-        print(sysargs, args)
+        logging.debug("Debugging output on")
+        logging.debug(sysargs, args)
 
     host, port = init_app(
         config_path=pre_args.config,
@@ -740,7 +740,7 @@ def main(sysargs):
         enable_no_password=args.no_password,
     )
 
-    print(f"Server started {host}:{port}")
+    logging.info(f"Server started {host}:{port}")
     app.run(host=host, port=port, debug=debug)
 
 
