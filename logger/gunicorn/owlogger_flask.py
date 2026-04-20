@@ -56,7 +56,7 @@ from functools import wraps
 
 # for Flask
 try:
-    from flask import Flask, request, Response, send_file, jsonify, g
+    from flask import Flask, request, Response, send_file
 except ImportError:
     print("Flask module needs to be installed")
     print("either 'pip install flask' or 'apt install python3-flask'")
@@ -130,7 +130,10 @@ def _env_bool(name):
 
 
 def _address_tuple(address_string, default_port):
-    """Parse 'host:port' or bare 'host' into (host, port)."""
+    """
+    Parse 'host:port' or bare 'host' into (host, port).
+    (Only used for stand-alone)
+    """
     if "://" not in address_string:
         u = urlparse(f"http://{address_string}")
     else:
@@ -413,14 +416,23 @@ def index():
 
 
 def _make_html(daystart, page_type):
+    # Data fetching
     if page_type == 'week':
-        dData = json.dumps(db.week_data(daystart))
+        raw_data = db.week_data(daystart)
     else:
-        dData = json.dumps(db.day_data(daystart))
+        raw_data = db.day_data(daystart)
 
-    dDays = [d[0] for d in db.distinct_days(daystart)]
-    mDays = [f"{daystart.year}-{m[0]}-01" for m in db.distinct_months(daystart)]
-    yDays = [f"{y[0]}-01-01" for y in db.distinct_years()]
+    # Use json.dumps to handle quotes, escaping, and formatting
+    js_vars = {
+        "dayData": raw_data,
+        "goodDays": [d[0] for d in db.distinct_days(daystart)],
+        "goodMonths": [f"{daystart.year}-{m[0]}-01" for m in db.distinct_months(daystart)],
+        "goodYears": [f"{y[0]}-01-01" for y in db.distinct_years()],
+        "daystart": daystart.isoformat(),
+        "page_type": page_type,
+        "header_date": datetime.datetime.now().strftime('%m/%d/%Y'),
+        "header_time": datetime.datetime.now().strftime('%H:%M'),
+    }
 
     return f"""
 <!DOCTYPE html>
@@ -469,16 +481,10 @@ def _make_html(daystart, page_type):
         </div>
     </body>
     <script>
-        var globals = {{
-            dayData:     {dData},
-            goodDays:    {dDays},
-            goodMonths:  {mDays},
-            goodYears:   {yDays},
-            daystart:    new Date("{daystart}"),
-            page_type:   "{page_type}",
-            header_date: "{datetime.datetime.now().strftime('%m/%d/%Y')}",
-            header_time: "{datetime.datetime.now().strftime('%H:%M')}",
-        }};
+        // Injecting the full config as a single JSON object is much safer
+        var globals = {json.dumps(js_vars)};
+        // Convert the date string back to a JS Date object
+        globals.daystart = new Date(globals.daystart);
     </script>
 </html>"""
 
@@ -505,7 +511,7 @@ def receive_data():
 
 
 # ---------------------------------------------------------------------------
-# Database class (unchanged from original)
+# Database class
 # ---------------------------------------------------------------------------
 
 class Database:
@@ -538,7 +544,7 @@ class Database:
 
     def get_version(self):
         try:
-            records = self.command("""SELECT version FROM version WHERE id = 1""", None, True)
+            records = self.fetch("""SELECT version FROM version WHERE id = 1""", None)
         except Exception:
             return 0
         if not records:
@@ -549,13 +555,13 @@ class Database:
         self.command(
             """INSERT INTO version(id, version) VALUES (1, ?)
                ON CONFLICT(id) DO UPDATE SET version = excluded.version;""",
-            (v,), False)
+            (v,))
 
     def set_password(self, username, password_hash):
         self.command(
             """INSERT INTO userlist(username, password_hash) VALUES (?, ?)
                ON CONFLICT(username) DO UPDATE SET password_hash = excluded.password_hash;""",
-            (username, password_hash), False)
+            (username, password_hash))
 
     def add(self, source, value):
         if debug:
@@ -566,19 +572,19 @@ class Database:
 
     def day_data(self, day):
         nextday = day + datetime.timedelta(days=1)
-        return self.command(
+        return self.fetch(
             """SELECT TIME(date) as t, source, value FROM datalog
                WHERE DATE(date) BETWEEN DATE(?) AND DATE(?) ORDER BY t""",
-            (day.isoformat(), nextday.isoformat()), True)
+            (day.isoformat(), nextday.isoformat()))
 
     def week_data(self, day):
         nextday  = day + datetime.timedelta(days=1)
         firstday = day + datetime.timedelta(days=-6)
-        records = self.command(
+        records = self.fetch(
             """SELECT strftime('%J',date)-strftime("%J",?) as t, source, value
                FROM datalog
                WHERE DATE(date) BETWEEN DATE(?) AND DATE(?) ORDER BY t""",
-            (firstday.isoformat(), firstday.isoformat(), nextday.isoformat()), True)
+            (firstday.isoformat(), firstday.isoformat(), nextday.isoformat()))
         if debug:
             print(records)
         return records
@@ -586,33 +592,34 @@ class Database:
     def distinct_days(self, day):
         firstday = day + datetime.timedelta(days=-34)
         lastday  = day + datetime.timedelta(days=34)
-        return self.command(
+        return self.fetch(
             """SELECT DISTINCT DATE(date) as d FROM datalog
                WHERE DATE(date) BETWEEN DATE(?) AND DATE(?) ORDER BY d""",
-            (firstday.isoformat(), lastday.isoformat()), True)
+            (firstday.isoformat(), lastday.isoformat()))
 
     def distinct_months(self, day):
         year_start = f"{day.year}-01-01"
         year_end   = f"{day.year + 1}-01-01"
-        return self.command(
+        return self.fetch(
             """SELECT DISTINCT strftime('%m', date) AS m FROM datalog
                WHERE date >= ? AND date < ? ORDER BY m""",
-            (year_start, year_end), True)
+            (year_start, year_end))
 
     def distinct_years(self):
-        return self.command(
+        return self.fetch(
             """SELECT DISTINCT strftime('%Y', date) AS y FROM datalog ORDER BY y""",
-            None, True)
+            None)
 
     def get_password(self, username):
-        return self.command(
+        return self.fetch(
             """SELECT password_hash FROM userlist WHERE username=?""",
-            (username,), True)
+            (username,))
 
     def hash_password(self, password):
         return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-    def command(self, cmd, value_tuple=None, fetch=False):
+    def fetch(self, cmd, value_tuple=None):
+        """SQL fetch command"""
         try:
             with sqlite3.connect(self.database) as conn:
                 cursor = conn.cursor()
@@ -620,15 +627,25 @@ class Database:
                     cursor.execute(cmd, value_tuple)
                 else:
                     cursor.execute(cmd)
-                if fetch:
-                    records = cursor.fetchall()
-                else:
-                    records = None
-                    conn.commit()
+                return cursor.fetchall()
         except sqlite3.Error as e:
             print(f"Database error <{self.database}>: {e}")
             raise
-        return records
+        return None # Should never be reached
+
+    def command(self, cmd, value_tuple=None):
+        """SQL non-fetch command (add data or configure)"""
+        try:
+            with sqlite3.connect(self.database) as conn:
+                cursor = conn.cursor()
+                if value_tuple is not None:
+                    cursor.execute(cmd, value_tuple)
+                else:
+                    cursor.execute(cmd)
+                conn.commit()
+        except sqlite3.Error as e:
+            print(f"Database error <{self.database}>: {e}")
+            raise
 
 
 # ---------------------------------------------------------------------------
