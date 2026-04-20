@@ -59,7 +59,7 @@ mkdir -p                  /usr/local/lib/owlogger
 \cp ../owlogger.css       /usr/local/lib/owlogger
 \cp ../air-datepicker.js  /usr/local/lib/owlogger
 \cp ../air-datepicker.css /usr/local/lib/owlogger
-\cp //.favicon.ico        /usr/local/lib/owlogger
+\cp ../favicon.ico        /usr/local/lib/owlogger
 
 # configuration
 mkdir -p                  /etc/owlogger
