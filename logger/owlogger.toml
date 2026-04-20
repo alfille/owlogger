@@ -17,7 +17,3 @@ token="simple_string"
 
 # No passwords? (for testing)
 no_password=false
-
-# debugging output (for testing)
-debug=false
-

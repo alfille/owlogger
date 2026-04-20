@@ -32,7 +32,6 @@
 #  OWLOGGER_CONFIG       path to a non-default TOML file
 #  OWLOGGER_DATABASE     path to SQLite database file
 #  OWLOGGER_TOKEN        JWT secret for POST/PUT endpoints
-#  OWLOGGER_DEBUG        1 / true / yes  →  enable debug logging
 #  OWLOGGER_NO_PASSWORD  1 / true / yes  →  disable Basic-Auth
 #  OWLOGGER_ADDRESS      host:port for standalone mode only
 #
@@ -88,7 +87,6 @@ app = Flask(__name__)
 # ---------------------------------------------------------------------------
 # Globals (set by init_app() before any request is served)
 # ---------------------------------------------------------------------------
-debug       = False
 db          = None
 jwt_token   = None
 no_password = False
@@ -166,14 +164,11 @@ def init_app(
 
     Returns (host, port) — only used by the standalone Flask server.
     """
-    global debug, db, jwt_token, no_password
+    global db, jwt_token, no_password
 
     # ── TOML ──────────────────────────────────────────────────────────────
     cfg_path = config_path or os.environ.get("OWLOGGER_CONFIG") or _DEFAULT_CONFIG
     toml     = _read_toml(cfg_path)
-
-    # ── debug ──────────────────────────────────────────────────────────────
-    debug = enable_debug or _env_bool("OWLOGGER_DEBUG") or toml.get("debug", False)
 
     # ── no_password ────────────────────────────────────────────────────────
     no_password = (
@@ -199,12 +194,11 @@ def init_app(
     )
     db = Database(db_path)
 
-    if debug:
-        logging.debug(
-            f"[init_app] config={cfg_path!r} db={db_path!r} "
-            f"debug={debug} no_password={no_password} "
-            f"jwt={'set' if jwt_token else 'unset'}"
-        )
+    logging.debug(
+        f"[init_app] config={cfg_path!r} db={db_path!r} "
+        f"no_password={no_password} "
+        f"jwt={'set' if jwt_token else 'unset'}"
+    )
 
     # ── address (standalone only; gunicorn binds via gunicorn.conf.py) ────
     addr_str = (
@@ -301,15 +295,15 @@ def require_jwt(f):
             auth_header = request.headers.get('Authorization')
             h_token, err = _extract_bearer_token(auth_header)
             if err:
-				logging.warning(err)
+                logging.warning(err)
                 return Response(err, status=401)
             try:
                 jwt.decode(h_token, jwt_token, algorithms=['HS256'])
             except jwt.ExpiredSignatureError:
-				logging.warning("Token expired")
+                logging.warning("Token expired")
                 return Response("Token expired", status=401)
             except jwt.InvalidTokenError:
-				logging.warning("Token invalid")
+                logging.warning("Token invalid")
                 return Response("Token invalid", status=401)
         return f(*args, **kwargs)
     return decorated
@@ -407,8 +401,7 @@ def index():
     except ValueError:
         daystart = datetime.datetime.combine(datetime.date.today(), datetime.time())
 
-    if debug:
-        logging.debug(f"GET / date={date_str} type={page_type}")
+    logging.debug(f"GET / date={date_str} type={page_type}")
 
     html = _make_html(daystart, page_type)
     resp = Response(html, status=200, content_type='text/html')
@@ -498,8 +491,7 @@ def _make_html(daystart, page_type):
 def receive_data():
     body = request.get_json(force=True)
     if body:
-        if debug:
-            logging.debug("POST", body)
+        logging.debug(f"POST {body}")
         name = body.get('name', 'unknown')
         data = body.get('data', '')
         if data:
@@ -564,8 +556,7 @@ class Database:
             (username, password_hash))
 
     def add(self, source, value):
-        if debug:
-            loggin.debug(f"Adding _{value}")
+        logging.debug(f"Adding _{value}")
         self.command(
             """INSERT INTO datalog(source, value) VALUES (?,?)""",
             (source, value))
@@ -585,8 +576,7 @@ class Database:
                FROM datalog
                WHERE DATE(date) BETWEEN DATE(?) AND DATE(?) ORDER BY t""",
             (firstday.isoformat(), firstday.isoformat(), nextday.isoformat()))
-        if debug:
-            logging.debug(records)
+        logging.debug(records)
         return records
 
     def distinct_days(self, day):
@@ -727,21 +717,22 @@ def main(sysargs):
 
     args = parser.parse_args(remaining_argv)
 
-    if args.debug:
-        logging.debug("Debugging output on")
-        logging.debug(sysargs, args)
+    logging.basicConfig(
+        level=logging.DEBUG if args.debug else logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s",
+    )
+    logging.debug(f"sysargs={sysargs}, args={args}")
 
     host, port = init_app(
         config_path=pre_args.config,
         database=args.database,
         token=args.token,
         address=args.address,
-        enable_debug=args.debug,
         enable_no_password=args.no_password,
     )
 
     logging.info(f"Server started {host}:{port}")
-    app.run(host=host, port=port, debug=debug)
+    app.run(host=host, port=port, debug=args.debug)
 
 
 if __name__ == "__main__":
