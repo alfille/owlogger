@@ -52,7 +52,7 @@ fi
 
 # Logger program
 mkdir -p                  /usr/local/lib/owlogger
-\cp owlogger-flask.py     /usr/local/lib/owlogger
+\cp owlogger_flask.py     /usr/local/lib/owlogger
 \cp gunicorn.conf.py      /usr/local/lib/owlogger
 \cp ../owlog_user.py      /usr/local/lib/owlogger
 \cp ../owlogger.js        /usr/local/lib/owlogger
