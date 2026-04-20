@@ -54,6 +54,11 @@ import tomllib
 from urllib.parse import urlparse
 from functools import wraps
 
+logging.basicConfig(
+    level=logging.WARNING,
+    format="%(asctime)s %(levelname)s %(message)s",
+)
+
 # for Flask
 try:
     from flask import Flask, request, Response, send_file
@@ -717,10 +722,7 @@ def main(sysargs):
 
     args = parser.parse_args(remaining_argv)
 
-    logging.basicConfig(
-        level=logging.DEBUG if args.debug else logging.INFO,
-        format="%(asctime)s %(levelname)s %(message)s",
-    )
+    logging.root.setLevel(logging.DEBUG if args.debug else logging.INFO)
     logging.debug(f"sysargs={sysargs}, args={args}")
 
     host, port = init_app(
