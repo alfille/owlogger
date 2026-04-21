@@ -55,7 +55,7 @@ from urllib.parse import urlparse
 from functools import wraps
 
 logging.basicConfig(
-    level=logging.WARNING,
+    level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
 )
 
@@ -114,7 +114,11 @@ def _read_toml(config_path):
         with open(config_path, "rb") as fh:
             return tomllib.load(fh)
     except FileNotFoundError:
+        logging.info(f"No toml configuration file {config_path}")
         return {}
+    except PermissionError:
+        logging.error(f"Access to {config_path} denied.")
+        sys.exit(1)
     except tomllib.TOMLDecodeError as e:
         with open(config_path, "rb") as fh:
             contents = fh.read()
@@ -153,7 +157,6 @@ def init_app(
     database=None,
     token=None,
     address=None,
-    enable_debug=False,
     enable_no_password=False,
 ):
     """
@@ -345,6 +348,9 @@ def serve_static(filename):
             data = f.read()
     except FileNotFoundError:
         return best_practice_headers(Response(f'File not found: {filename}', status=404))
+    except PermissionError:
+        logging.error(f'Permission denied to serve {filename} content')
+        return best_practice_headers(Response(f'Access denied: {filename}', status=403))
     resp = Response(data, status=200, content_type=mime)
     resp.headers['Cache-Control'] = 'max-age=31536000'
     return best_practice_headers(resp)
@@ -533,11 +539,7 @@ class Database:
                 username TEXT PRIMARY KEY,
                 password_hash TEXT NOT NULL
             );""")
-        try:
-            with sqlite3.connect(self.database) as conn:
-                conn.execute('pragma journal_mode=wal')
-        except sqlite3.Error as e:
-            logging.info(f"Database error setting WAL mode <{self.database}>: {e}")
+        self.command('pragma journal_mode=wal')
 
     def get_version(self):
         try:
@@ -624,7 +626,7 @@ class Database:
                     cursor.execute(cmd)
                 return cursor.fetchall()
         except sqlite3.Error as e:
-            logging.error(f"Database error <{self.database}>: {e}")
+            logging.error(f"Database reading error <{self.database}>: {e}")
             raise
         return None # Should never be reached
 
@@ -639,7 +641,7 @@ class Database:
                     cursor.execute(cmd)
                 conn.commit()
         except sqlite3.Error as e:
-            logging.error(f"Database error <{self.database}>: {e}")
+            logging.error(f"Database writing error <{self.database}>: {e}")
             raise
 
 
