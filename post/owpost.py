@@ -8,88 +8,96 @@
 
 # Example from https://pytutorial.com/python-requestsput-complete-guide-for-http-put-requests/
 
-from requests import put as send_put, post as send_post
+from requests import post as send_post
+from requests.exceptions import ConnectionError, Timeout
 import json
 import datetime
 import argparse
-import math
 from pyownet import protocol
 import sys
 import time
 import tomllib
-import urllib
 from urllib.parse import urlparse
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+)
 
 # for authentification
 try:
     import jwt
-except:
-    print("JWT module needs to be installed")
-    print("either 'pip install PyJWT' or 'apt install python3-jwt'")
+except ImportError:
+    logging.error("JWT module needs to be installed. Do 'pip install PyJWT' or 'apt install python3-jwt'")
     sys.exit(1)
 
 class Transmit:
     def __init__(self, server, name, token):
         self.server = server
         self.name = name
-        
-        # JWT token?
-        if token == None:
-            self.headers = { "Content-Type": "application/text"}
-        else:
-            secret = jwt.encode( {'name':self.name},token,algorithm='HS256')
-            self.headers = { 'Authorization': f'Bearer {secret}', 'Content-Type': 'application/text'}
-            
+        self.token = token
+                    
     def upload( self, data_string ):
         data = json.dumps( {'data': data_string, 'name':self.name } )
         self.post( data )
 
     def post( self, data ): 
-        try:
-            response = send_post( self.server, data=data, headers=self.headers )
-            global debug
-            if debug:
-                print( f"Return code={response.status_code} ({response.reason}) from {response.url}, tried {self.server}")
-        except Exception as e:
-            print( f"{datetime.datetime.now()}, {data} to {self.server} Error: {e}" ) 
+        # JWT token?
+        if self.token == None:
+            headers = { "Content-Type": "application/text"}
+        else:
+            secret = jwt.encode(
+                {'name':self.name, 'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)},
+                self.token,
+                algorithm='HS256'
+                )
+            headers = { 'Authorization': f'Bearer {secret}', 'Content-Type': 'application/text'}
 
-def read_toml( args ):
-    if "config" in args:
         try:
-            with open( args.config, "rb" ) as c:
-                toml = tomllib.load(c)
-        except tomllib.TOMLDecodeError as e:
-            with open ( args.config, "rb" ) as c:
-                contents = c.read()
-            for lin in zip(range(1,200),contents.decode('utf-8').split("\n")):
-                print(f"{lin[0]:3d}. {lin[1]}")
-            print(f"Trouble reading configuration file {args.config} Error: {e}")
-            sys.exit(1)
+            response = send_post( self.server, data=data, headers=headers, timeout=10 )
+            logging.debug( f"Return code={response.status_code} ({response.reason}) from {response.url}, tried {self.server}")
+            response.raise_for_status() # Trap 4xx/5xx errors
+        except ConnectionError:
+            logging.warning(f"Could not connect to server at {self.server}")
+        except Timeout:
+            logging.warning("Server request timed out.")
         except Exception as e:
-            print(f"Cannot open TOML configuration file: {args.config} Error: {e}")
-            toml={}
-    return toml
+            logging.error(f"Unexpected transmission error: {e}")
+
+def read_toml( config_path ):
+    try:
+        with open( config_path, "rb" ) as c:
+            return tomllib.load(c)
+    except tomllib.TOMLDecodeError as e:
+        with open ( config_path, "rb" ) as c:
+            contents = c.read()
+        for lin in zip(range(1,200),contents.decode('utf-8').split("\n")):
+            logging.info(f"{lin[0]:3d}. {lin[1]}")
+        logging.error(f"Trouble reading configuration file {config_path} Error: {e}")
+        sys.exit(1)
+    except FileNotFoundError:
+        logging.info(f"No TOML configuration file {config_path}")
+        return {}
+    except PermissionError:
+        logging.error(f"Access to {config_path} denied.")
+        sys.exit(1)    
+    except Exception as e:
+        logging.warning(f"TOML Error: {e}")
+    return {}
 
 def server_tuple( server_string, default_port ):
-    # takes a server string in a variety of formats and returns the bare needed components
-    
-    # Handle server address
-    server = server_string
-    
-    # Add http:// for url processing even though it's not poart of the final result
-    if server.find("//") == -1:
-        server = f"http://{server}"
-    
-    # url parse and extract port
-    u = urllib.parse.urlparse(server)
-    port = u.port
-    if port==None:
-        port = default_port
-        
-    # netloc can include port, so remove 
-    netloc = u.netloc.split(':')[0]
-    
-    return netloc, port
+    """
+    Parse 'host:port' or bare 'host' into (host, port).
+    """
+    if "://" not in server_string:
+        u = urlparse(f"http://{server_string}")
+    else:
+        u = urlparse(server_string)
+    host = u.hostname or "localhost"
+    port = u.port or default_port
+    return host, port
+
 
 def main(sysargs):
     # Look for a config file location (else default) 
@@ -115,7 +123,7 @@ def main(sysargs):
 
     # Process TOML to get those baseline values
     # TOML file
-    toml = read_toml( args )
+    toml = read_toml( args.config )
 
     # Second pass at command line
     parser = argparse.ArgumentParser(
@@ -213,12 +221,8 @@ def main(sysargs):
                 
     args=parser.parse_args()
 
-    #server
-    # debug
-    global debug
-    debug = args.debug
-    if debug:
-        print("Debugging on")
+    logging.root.setLevel(logging.DEBUG if args.debug else logging.INFO)
+    logging.debug(f"sysargs={sysargs}, args={args}")
         
     # Server (external data collector)
     # Take server string as is. Can be http, https or anything that the reverse proxy can manage (perhaps a branch)
@@ -235,14 +239,12 @@ def main(sysargs):
 
     # message entry skips 1-wire and periodic loop
     if "message" in args and args.message !=None:
-        print(args.message)
-        print( f"Args Message: {' '.join(args.message)}" )
+        logging.info( f"Args Message: {' '.join(args.message)}" )
         server.upload(' '.join(args.message))
         return
-    if "message" in toml and toml.message != None:
-        print(toml.message)
-        print( f"Toml Message: {' '.join(toml.message)}" )
-        server.upload(' '.join(toml.message))
+    if "message" in toml and toml["message"] != None:
+        logging.info( f"Toml Message: {' '.join(toml['message'])}" )
+        server.upload(' '.join(toml["message"]))
         return
 
     #
@@ -255,16 +257,16 @@ def main(sysargs):
             flags=temp_scale,
             verbose=args.debug, )
     except protocol.ConnError as error:
-        print(f"Unable to open connection to '{owaddr}:{owport} Error: {error}")
+        logging.error(f"Unable to open connection to '{owaddr}:{owport} Error: {error}")
         sys.exit(1)
     except protocol.ProtocolError as error:
-        print("'{owaddr}:{owport}' not an owserver? Protocol Error: {error}")
+        logging.error(f"'{owaddr}:{owport}' not an owserver? Protocol Error: {error}")
         sys.exit(1)
 
     #period
     if "period" in args:
         period = args.period
-        if math.isnan(period):
+        if period is None:
             period = 30
     else:
         period = None
@@ -277,7 +279,7 @@ def main(sysargs):
         try:
             owdir = owproxy.dir(slash=False, bus=False)
         except protocol.OwnetError as e:
-            print( "Cannot read owserver Error: {e}" )
+            logging.warning( f"Cannot read owserver Error: {e}" )
             owdir = []
         for sensor in owdir:
             #stype = owproxy.read(sensor + '/type').decode()
@@ -308,4 +310,4 @@ def main(sysargs):
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
 else:
-    print("Standalone program")
+    logging.info("Intended to be a standalone program")
