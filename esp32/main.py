@@ -4,6 +4,7 @@ import machine
 import gc
 import sys
 import network
+import socket
 import ntptime
 import time
 import json
@@ -22,6 +23,7 @@ token_timeout = 60*60 #1hr
 ntptime.host = "pool.ntp.org"
 epoch_correction = 946684800
 wifi_region = "US"
+socket.setdefaulttimeout(5)
 
 class Transmit:
     def __init__(self, server, name, wifi, token):
@@ -39,29 +41,28 @@ class Transmit:
             
     def connect( self ):
         for j in range(0,10):
-            try:
-                print(f"Attempting wifi {self.wifi_index} {self.wifi[self.wifi_index]['ssid']}")
-                self.wlan.connect( self.wifi[self.wifi_index]['ssid'], self.wifi[self.wifi_index]['password'] )
-                for tries in range(0,10):
-                    wdt.feed()
-                    time.sleep(5)
-                    if self.wlan.isconnected():
-                        print(f"Network {self.wlan.ifconfig()}")
-                        for i in range(0,3):
-                            wdt.feed()
-                            try:
-                                ntptime.settime()
-                                return
-                            except Exception as e:
-                                print(f"NTP error {e}")
-                                pass
-                        print("NTP not set")
-                        return
-            except Exception as e:
-                print(f"WIFI error {e}")
+            for k in range(0,3):
+                try:
+                    print(f"Attempting wifi {self.wifi_index} {self.wifi[self.wifi_index]['ssid']}")
+                    self.wlan.connect( self.wifi[self.wifi_index]['ssid'], self.wifi[self.wifi_index]['password'] )
+                    for tries in range(0,10):
+                        wdt.feed()
+                        time.sleep(5)
+                        if self.wlan.isconnected():
+                            print(f"Network {self.wlan.ifconfig()}")
+                            for i in range(0,10):
+                                wdt.feed()
+                                try:
+                                    ntptime.settime()
+                                    return
+                                except Exception as e:
+                                    print(f"NTP error {e}")
+                            print("NTP not set")
+                except Exception as e:
+                    print(f"WIFI error {e}")
             self.wifi_index = (self.wifi_index + 1) % len(self.wifi)
         print("Cannot connect");
-        time.sleep(100) # trigger wdt to reset
+        machine.reset() # trigger wdt to reset
     
     def upload( self, data_string ):
         if not self.wlan.isconnected():
