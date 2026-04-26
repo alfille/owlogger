@@ -427,6 +427,7 @@ def _make_html(daystart, page_type):
         raw_data = db.day_data(daystart)
 
     # Use json.dumps to handle quotes, escaping, and formatting
+    now = datetime.datetime.now()
     js_vars = {
         "dayData": raw_data,
         "goodDays": [d[0] for d in db.distinct_days(daystart)],
@@ -434,8 +435,8 @@ def _make_html(daystart, page_type):
         "goodYears": [f"{y[0]}-01-01" for y in db.distinct_years()],
         "daystart": daystart.isoformat(),
         "page_type": page_type,
-        "header_date": datetime.datetime.now().strftime('%m/%d/%Y'),
-        "header_time": datetime.datetime.now().strftime('%H:%M'),
+        "header_date": now.strftime('%m/%d/%Y'),
+        "header_time": now.strftime('%H:%M'),
     }
 
     return f"""
@@ -571,17 +572,17 @@ class Database:
     def day_data(self, day):
         nextday = day + datetime.timedelta(days=1)
         return self.fetch(
-            """SELECT TIME(date) as t, source, value FROM datalog
-               WHERE DATE(date) BETWEEN DATE(?) AND DATE(?) ORDER BY t""",
+            """SELECT TIME(date, 'localtime') as t, source, value FROM datalog
+               WHERE DATE(date,'localtime') BETWEEN DATE(?) AND DATE(?) ORDER BY t""",
             (day.isoformat(), nextday.isoformat()))
 
     def week_data(self, day):
         nextday  = day + datetime.timedelta(days=1)
         firstday = day + datetime.timedelta(days=-6)
         records = self.fetch(
-            """SELECT strftime('%J',date)-strftime("%J",?) as t, source, value
+            """SELECT strftime('%J',date,'localtime')-strftime("%J",?,'localtime') as t, source, value
                FROM datalog
-               WHERE DATE(date) BETWEEN DATE(?) AND DATE(?) ORDER BY t""",
+               WHERE DATE(date,'localtime') BETWEEN DATE(?) AND DATE(?) ORDER BY t""",
             (firstday.isoformat(), firstday.isoformat(), nextday.isoformat()))
         logging.debug(records)
         return records
@@ -590,21 +591,21 @@ class Database:
         firstday = day + datetime.timedelta(days=-34)
         lastday  = day + datetime.timedelta(days=34)
         return self.fetch(
-            """SELECT DISTINCT DATE(date) as d FROM datalog
-               WHERE DATE(date) BETWEEN DATE(?) AND DATE(?) ORDER BY d""",
+            """SELECT DISTINCT DATE(date,'localtime') as d FROM datalog
+               WHERE DATE(date,'localtime') BETWEEN DATE(?) AND DATE(?) ORDER BY d""",
             (firstday.isoformat(), lastday.isoformat()))
 
     def distinct_months(self, day):
         year_start = f"{day.year}-01-01"
         year_end   = f"{day.year + 1}-01-01"
         return self.fetch(
-            """SELECT DISTINCT strftime('%m', date) AS m FROM datalog
-               WHERE date >= ? AND date < ? ORDER BY m""",
+            """SELECT DISTINCT strftime('%m', date,'localtime') AS m FROM datalog
+               WHERE DATE(date,'localtime') >= ? AND DATE(date,'localtime') < ? ORDER BY m""",
             (year_start, year_end))
 
     def distinct_years(self):
         return self.fetch(
-            """SELECT DISTINCT strftime('%Y', date) AS y FROM datalog ORDER BY y""",
+            """SELECT DISTINCT strftime('%Y', date,'localtime') AS y FROM datalog ORDER BY y""",
             None)
 
     def get_password(self, username):
@@ -651,20 +652,6 @@ class Database:
 
 def set_password(database, username, password):
     database.set_password(username, database.hash_password(password))
-
-
-# ---------------------------------------------------------------------------
-# Gunicorn hook  (auto-discovered because this module is the gunicorn app)
-# ---------------------------------------------------------------------------
-
-def on_starting(server):
-    """
-    Called once by the gunicorn arbiter before any worker is forked.
-    Initialises globals in the master; every worker inherits them.
-    Configuration comes from env vars (injected by systemd) and/or TOML.
-    CLI arguments are unavailable here — gunicorn owns sys.argv.
-    """
-    init_app()
 
 
 # ---------------------------------------------------------------------------

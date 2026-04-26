@@ -23,7 +23,7 @@ token_timeout = 60*60 #1hr
 ntptime.host = "pool.ntp.org"
 epoch_correction = 946684800
 wifi_region = "US"
-ntp.timeout(5)
+ntptime.timeout = 5
 
 class Transmit:
     def __init__(self, server, name, wifi, token):
