@@ -4,7 +4,7 @@ import machine
 import gc
 import sys
 import network
-import socket
+#import socket
 import ntptime
 import time
 import json
@@ -18,12 +18,12 @@ import jwt
 #----------
 server = None
 time.sleep(2) #for watchdog
-wdt = machine.WDT(timeout=60000) #timeout
+wdt = machine.WDT(timeout=120000) #timeout
 token_timeout = 60*60 #1hr
 ntptime.host = "pool.ntp.org"
 epoch_correction = 946684800
 wifi_region = "US"
-socket.settimeout(5)
+ntp.timeout(5)
 
 class Transmit:
     def __init__(self, server, name, wifi, token):
@@ -38,6 +38,7 @@ class Transmit:
         self.wifi_index = 0
         
         self.token = token
+        self.goodtime = False
             
     def connect( self ):
         for j in range(0,10):
@@ -52,16 +53,25 @@ class Transmit:
                             print(f"Network {self.wlan.ifconfig()}")
                             for i in range(0,10):
                                 wdt.feed()
+                                # set time, even if already set, to manage drift
                                 try:
                                     ntptime.settime()
+                                    time.sleep(2)
+                                    self.goodtime = True # can fail later and still trust time
+                                    wdt.feed()
                                     return
                                 except Exception as e:
                                     print(f"NTP error {e}")
+                            if self.goodtime:
+                                print("NTP not reset")
+                                return
                             print("NTP not set")
+                            machine.reset()
                 except Exception as e:
                     print(f"WIFI error {e}")
             self.wifi_index = (self.wifi_index + 1) % len(self.wifi)
         print("Cannot connect");
+        
         machine.reset() # trigger wdt to reset
     
     def upload( self, data_string ):
