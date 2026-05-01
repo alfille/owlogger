@@ -84,8 +84,10 @@ mkdir -p          /usr/local/lib/owlogger
 
 # configuration
 mkdir -p              /etc/owlogger
-# cp -i owpost.toml     /etc/owlogger
-cat > /etc/owlogger/$toml <<EOF
+
+ TEMPFILE=$(mktemp)
+trap 'rm -f "$TEMPFILE"' EXIT
+cat > "$TEMPFILE" <<EOF
 # owpost configuration file
 # in TOML format https://toml.io/en/
 # $name instance
@@ -111,7 +113,7 @@ owserver="localhost:4304"
 # name
 # to distinguish multiple sources
 # Choose a real, insightful name
-name=$name
+name="$name"
 
 # Authentification token
 # choose something better than this
@@ -129,6 +131,8 @@ debug=false
 # better done in systemd or cron!
 #period=15
 EOF
+cp -i "$TEMPFILE" /etc/owlogger/$toml
+
 chown -R $USER:$GROUP /etc/owlogger/$toml
 chmod 660             /etc/owlogger/$toml
 
@@ -137,7 +141,9 @@ chmod 660             /etc/owlogger/$toml
 chmod +x       /usr/bin/owpost
 
 # systemd files
-cat > /etc/systemd/system/$service <<EOF
+TEMPFILE2=$(mktemp)
+trap 'rm -f "$TEMPFILE2"' EXIT
+cat > "$TEMPFILE2" <<EOF
 [Unit]
 Description=Post 1-wire data from owserver to remote owlogger
 Documentation=https://alfille.github.io/owlogger/owpost.html
@@ -156,7 +162,11 @@ StandardError=journal
 [Install]
 WantedBy=multi-user.target
 EOF
-cat > /etc/systemd/system/$timer <<EOF
+cp -i "$TEMPFILE2" /etc/systemd/system/$service
+
+TEMPFILE3=$(mktemp)
+trap 'rm -f "$TEMPFILE3"' EXIT
+cat > "$TEMPFILE3" <<EOF
 [Unit]
 Description=Run owpost ($name instance) periodically to send data to owlogger
 Requires=$service
@@ -169,6 +179,8 @@ Unit=$service
 [Install]
 WantedBy=timers.target
 EOF
+cp -i "$TEMPFILE3" /etc/systemd/system/$timer
+
 systemctl daemon-reexec
 systemctl daemon-reload
 systemctl enable   $service
