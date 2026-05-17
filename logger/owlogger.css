@@ -141,7 +141,7 @@ html,body {
     grid-area:week;
 }
 #month {
-    grid-area:week;
+    grid-area:month;
 }
 #date {
     grid-area:date;
