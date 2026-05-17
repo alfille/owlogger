@@ -499,7 +499,7 @@ class Month extends Plot {
         this.ctx.font = `${this.scaleX}px san serif` ;
         this.ctx.fillStyle = "gray" ;
         for ( let time = this.X0; time <= this.X1 ; time += 7 ) {
-            const date = new Date(globals.daystart - 31 + X0);
+            const date = new Date(globals.daystart - 31 + this.X0);
             this.ctx.fillText(date.toLocaleDateString('en-US', {month: 'short', day: 'numeric'}),this.X(time),this.Y(this.Y0)+0.5);
         }
     }
