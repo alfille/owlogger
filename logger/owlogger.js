@@ -500,7 +500,7 @@ class Month extends Plot {
         this.ctx.fillStyle = "gray" ;
         for ( let time = this.X0; time <= this.X1 ; time += 7 ) {
             const date = new Date(globals.daystart - 31 + time);
-            console.log(globals.daystart,time,this.X0 this.X1,time,date);
+            console.log(globals.daystart,time,this.X0,this.X1,date);
             this.ctx.fillText(date.toLocaleDateString('en-US', {month: 'short', day: 'numeric'}),this.X(time),this.Y(this.Y0)+0.5);
         }
     }
