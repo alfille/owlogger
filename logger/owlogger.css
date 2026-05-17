@@ -65,6 +65,7 @@ html,body {
             'stat' min-content 
             'plot' min-content 
             'week' min-content 
+            'month' min-content 
             '.' auto
             'date' min-content
             'time' min-content;
@@ -137,6 +138,9 @@ html,body {
     grid-area:plot;
 }
 #week {
+    grid-area:week;
+}
+#month {
     grid-area:week;
 }
 #date {

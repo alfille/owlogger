@@ -404,7 +404,7 @@ def frame_png():
 def index():
     date_str      = request.args.get('date', datetime.date.today().isoformat())
     page_type_raw = request.args.get('type', 'data')
-    type_map      = {'week': 'week', 'plot': 'plot', 'stat': 'stat'}
+    type_map      = {'week': 'week', 'plot': 'plot', 'stat': 'stat', 'month': 'month', }
     page_type     = type_map.get(page_type_raw, 'data')
 
     try:
