@@ -285,43 +285,36 @@ class Plot {
         this.Y0 = Math.round( this.minY - 2 );
         this.scaleY = (this.height-2*this.padY)/(this.Y1-this.Y0) ;
     }
-    setup() {
-        this.ctx.fillStyle = "white" ;
-        this.ctx.fillRect(0,0,this.width,this.height) ;
-        this.ctx.strokeStyle = "lightgray" ;
-        
-        this.ctx.lineWidth = 1 ;
+    vert(delT,linewidth) {
+        this.ctx.lineWidth = linewidth ;
         this.ctx.beginPath() ;
-        for ( let time = this.X0; time <= this.X1 ; time += 1 ) {
+        for ( let time = this.X0; time <= this.X1 ; time += delT ) {
             // vert
             this.ctx.moveTo( this.X(time),this.Y(this.Y0) ) ;
             this.ctx.lineTo( this.X(time),this.Y(this.Y1) ) ;
         }
-        for ( let temp = this.Y0; temp <= this.Y1 ; temp += 1 ) {
+        this.ctx.stroke() ;
+    }
+    horz(delTemp,linewidth) {
+        this.ctx.lineWidth = linewidth ;
+        this.ctx.beginPath() ;
+        for ( let temp = this.Y0; temp <= this.Y1 ; temp += delTemp ) {
             // horz
             this.ctx.moveTo( this.X(this.X0),this.Y(temp) ) ;
             this.ctx.lineTo( this.X(this.X1),this.Y(temp) ) ;
         }
         this.ctx.stroke() ;
+    }
+    setup() {
+        this.ctx.fillStyle = "white" ;
+        this.ctx.fillRect(0,0,this.width,this.height) ;
+        this.ctx.strokeStyle = "lightgray" ;
         
-        this.ctx.lineWidth = 2 ;
-        this.ctx.beginPath() ;
-        for ( let time = this.X0; time <= this.X1 ; time += 2 ) {
-            // 2 hr
-            this.ctx.moveTo( this.X(time),this.Y(this.Y0) ) ;
-            this.ctx.lineTo( this.X(time),this.Y(this.Y1) ) ;
-        }
-        this.ctx.stroke() ;
-        
-        this.ctx.lineWidth = 4 ;
-        this.ctx.beginPath() ;
-        for ( let time = this.X0; time <= this.X1 ; time += 4 ) {
-            // 4 hr
-            this.ctx.moveTo( this.X(time),this.Y(this.Y0) ) ;
-            this.ctx.lineTo( this.X(time),this.Y(this.Y1) ) ;
-        }
-        this.ctx.stroke() ;
-        
+        this.vert( 1, 1 ) ;
+        this.horz( 1, 1 ) ;
+        this.vert( 2, 2 ) ;
+        this.vert( 4, 4 ) ;
+                
         this.ctx.font = `${this.scaleY/2}px san serif` ;
         this.ctx.fillStyle = "gray" ;
         for ( let temp = this.Y0; temp <= this.Y1 ; temp += 1 ) {
@@ -386,37 +379,10 @@ class Week extends Plot {
         this.ctx.fillRect(0,0,this.width,this.height) ;
         this.ctx.strokeStyle = "lightgray" ;
         
-        this.ctx.lineWidth = 1 ;
-        this.ctx.beginPath() ;
-        for ( let time = this.X0; time <= this.X1 ; time += .25 ) {
-            // vert
-            this.ctx.moveTo( this.X(time),this.Y(this.Y0) ) ;
-            this.ctx.lineTo( this.X(time),this.Y(this.Y1) ) ;
-        }
-        for ( let temp = this.Y0; temp <= this.Y1 ; temp += 1 ) {
-            // horz
-            this.ctx.moveTo( this.X(this.X0),this.Y(temp) ) ;
-            this.ctx.lineTo( this.X(this.X1),this.Y(temp) ) ;
-        }
-        this.ctx.stroke() ;
-        
-        this.ctx.lineWidth = 2 ;
-        this.ctx.beginPath() ;
-        for ( let time = this.X0; time <= this.X1 ; time += .5 ) {
-            // 12 hr
-            this.ctx.moveTo( this.X(time),this.Y(this.Y0) ) ;
-            this.ctx.lineTo( this.X(time),this.Y(this.Y1) ) ;
-        }
-        this.ctx.stroke() ;
-        
-        this.ctx.lineWidth = 4 ;
-        this.ctx.beginPath() ;
-        for ( let time = this.X0; time <= this.X1 ; time += 1 ) {
-            // day
-            this.ctx.moveTo( this.X(time),this.Y(this.Y0) ) ;
-            this.ctx.lineTo( this.X(time),this.Y(this.Y1) ) ;
-        }
-        this.ctx.stroke() ;
+        this.vert( .25, 1 ) ;
+        this.horz( 1, 1 ) ;
+        this.vert( .5, 2 ) ;
+        this.vert( 1, 4 ) ;
         
         this.ctx.font = `${this.scaleY/2}px san serif` ;
         this.ctx.fillStyle = "gray" ;
@@ -459,38 +425,11 @@ class Month extends Plot {
         this.ctx.fillRect(0,0,this.width,this.height) ;
         this.ctx.strokeStyle = "lightgray" ;
         
-        this.ctx.lineWidth = 1 ;
-        this.ctx.beginPath() ;
-        for ( let time = this.X0; time <= this.X1 ; time += .25 ) {
-            // vert
-            this.ctx.moveTo( this.X(time),this.Y(this.Y0) ) ;
-            this.ctx.lineTo( this.X(time),this.Y(this.Y1) ) ;
-        }
-        for ( let temp = this.Y0; temp <= this.Y1 ; temp += 1 ) {
-            // horz
-            this.ctx.moveTo( this.X(this.X0),this.Y(temp) ) ;
-            this.ctx.lineTo( this.X(this.X1),this.Y(temp) ) ;
-        }
-        this.ctx.stroke() ;
-        
-        this.ctx.lineWidth = 2 ;
-        this.ctx.beginPath() ;
-        for ( let time = this.X0; time <= this.X1 ; time += 1 ) {
-            // day
-            this.ctx.moveTo( this.X(time),this.Y(this.Y0) ) ;
-            this.ctx.lineTo( this.X(time),this.Y(this.Y1) ) ;
-        }
-        this.ctx.stroke() ;
-        
-        this.ctx.lineWidth = 4 ;
-        this.ctx.beginPath() ;
-        for ( let time = this.X0; time <= this.X1 ; time += 7 ) {
-            // week
-            this.ctx.moveTo( this.X(time),this.Y(this.Y0) ) ;
-            this.ctx.lineTo( this.X(time),this.Y(this.Y1) ) ;
-        }
-        this.ctx.stroke() ;
-        
+        this.vert( .5, 1 ) ;
+        this.horz( 1, 1 ) ;
+        this.vert( 1, 2 ) ;
+        this.vert( 7, 4 ) ;
+                
         this.ctx.font = `${this.scaleY/2}px san serif` ;
         this.ctx.fillStyle = "gray" ;
         for ( let temp = this.Y0; temp <= this.Y1 ; temp += 1 ) {
