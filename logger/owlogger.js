@@ -503,7 +503,6 @@ class Month extends Plot {
             this.ctx.fillText(date.toLocaleDateString('en-US', {month: 'short', day: 'numeric'}),this.X(time),this.Y(this.Y0)+0.5);
         }
     }
-);
 }
 window.onload = () => {
     function TestDate(x) {
