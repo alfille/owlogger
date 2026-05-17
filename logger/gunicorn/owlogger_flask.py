@@ -423,6 +423,8 @@ def _make_html(daystart, page_type):
     # Data fetching
     if page_type == 'week':
         raw_data = db.week_data(daystart)
+    elif page_type == 'month':
+        raw_data = db.month_data(daystart) 
     else:
         raw_data = db.day_data(daystart)
 
@@ -460,6 +462,7 @@ def _make_html(daystart, page_type):
                 <a class="button" id="stat"  href="#" onclick="JumpTo.type('stat')">Stats</a>
                 <a class="button" id="plot"  href="#" onclick="JumpTo.type('plot')">Graph</a>
                 <a class="button" id="week"  href="#" onclick="JumpTo.type('week')">Week</a>
+                <a class="button" id="month" href="#" onclick="JumpTo.type('month')">Month</a>
                 <span id="date"></span>
                 <span id="time"></span>
             </div>
@@ -579,6 +582,17 @@ class Database:
     def week_data(self, day):
         nextday  = day + datetime.timedelta(days=1)
         firstday = day + datetime.timedelta(days=-6)
+        records = self.fetch(
+            """SELECT strftime('%J',date,'localtime')-strftime("%J",?,'localtime') as t, source, value
+               FROM datalog
+               WHERE DATE(date,'localtime') BETWEEN DATE(?) AND DATE(?) ORDER BY t""",
+            (firstday.isoformat(), firstday.isoformat(), nextday.isoformat()))
+        logging.debug(records)
+        return records
+
+    def month_data(self, day):
+        nextday  = day + datetime.timedelta(days=1)
+        firstday = day + datetime.timedelta(days=-30)
         records = self.fetch(
             """SELECT strftime('%J',date,'localtime')-strftime("%J",?,'localtime') as t, source, value
                FROM datalog
