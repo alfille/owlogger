@@ -89,7 +89,7 @@ class Swipe {
         this.initialX = event.touches[0].clientX;
         this.initialY = event.touches[0].clientY;
     }
-    stop() {
+    stop(event) {
         const deltaX = this.initialX - event.changedTouches[0].clientX;
         const deltaY = this.initialY - event.changedTouches[0].clientY;
         if ( Math.abs(deltaY) < this.thresholdY ) {
@@ -269,7 +269,33 @@ class Plot {
     Xlimits() {
         this.X0 = 0;
         this.X1 = 24;
+        this.scaleX = (this.width-2*this.padX)/(this.X1-this.X0) ;
     }
+    Ylimits() {
+        this.Y1 = Math.round( this.maxY + 1 );
+        this.Y0 = Math.round( this.minY - 2 );
+        this.scaleY = (this.height-2*this.padY)/(this.Y1-this.Y0) ;
+        this.Ymajor = 1 ;
+        this.Yminor = .5 ;
+        while (true) {
+            if ( ( this.Y1 - this.Y0 ) <  2 * this.Ymajor ) {
+                this.Ymajor /= 5 ;
+                this.Yminor /= 2 ;
+            } else if ( ( this.Y1- this.Y0 ) < 5 * this.Ymajor ) {
+                this.Ymajor /= 2 ;
+                this.Yminor /= 5 ;
+            } else if ( ( this.Y1 - this.Y0 ) > 20 * this.Ymajor ) {
+                this.Ymajor *= 5 ;
+                this.Yminor *= 2 ;
+            } else if ( ( this.Y1 - this.Y0 ) > 10 * this.Ymajor ) {
+                this.Ymajor *= 2 ;
+                this.Yminor *= 5 ;
+            } else {
+                break ;
+            }
+        }
+    }
+        
     filter() {
         this.maxY = -Infinity ;
         this.minY = Infinity ;
@@ -280,10 +306,7 @@ class Plot {
         this.padX = 10;
         this.padY = 10;
         this.Xlimits() ;
-        this.scaleX = (this.width-2*this.padX)/(this.X1-this.X0) ;
-        this.Y1 = Math.round( this.maxY + 1 );
-        this.Y0 = Math.round( this.minY - 2 );
-        this.scaleY = (this.height-2*this.padY)/(this.Y1-this.Y0) ;
+        this.Ylimits() ;
     }
     vert(delT,linewidth) {
         this.ctx.lineWidth = linewidth ;
@@ -295,15 +318,31 @@ class Plot {
         }
         this.ctx.stroke() ;
     }
-    horz(delTemp,linewidth) {
-        this.ctx.lineWidth = linewidth ;
+    horz() {
+        // minot grid
+        this.ctx.lineWidth = 1 ;
         this.ctx.beginPath() ;
-        for ( let temp = this.Y0; temp <= this.Y1 ; temp += delTemp ) {
+        for ( let temp = this.Y0; temp <= this.Y1 ; temp += this.Yminor ) {
             // horz
             this.ctx.moveTo( this.X(this.X0),this.Y(temp) ) ;
             this.ctx.lineTo( this.X(this.X1),this.Y(temp) ) ;
         }
         this.ctx.stroke() ;
+        // major grid
+        this.ctx.lineWidth = 3 ;
+        this.ctx.beginPath() ;
+        for ( let temp = this.Y0; temp <= this.Y1 ; temp += this.Ymajor ) {
+            // horz
+            this.ctx.moveTo( this.X(this.X0),this.Y(temp) ) ;
+            this.ctx.lineTo( this.X(this.X1),this.Y(temp) ) ;
+        }
+        this.ctx.stroke() ;
+        // scale
+        this.ctx.font = `${this.scaleY*this.Ymajor/2}px san serif` ;
+        this.ctx.fillStyle = "gray" ;
+        for ( let temp = this.Y0; temp <= this.Y1 ; temp += this.Ymajor ) {
+            this.ctx.fillText(Number(temp).toFixed(0),this.X(this.X0),this.Y(temp)) ;
+        }
     }
     setup() {
         this.ctx.fillStyle = "white" ;
@@ -311,15 +350,11 @@ class Plot {
         this.ctx.strokeStyle = "lightgray" ;
         
         this.vert( 1, 1 ) ;
-        this.horz( 1, 1 ) ;
         this.vert( 2, 2 ) ;
         this.vert( 4, 4 ) ;
+        
+        this.horz() ;
                 
-        this.ctx.font = `${this.scaleY/2}px san serif` ;
-        this.ctx.fillStyle = "gray" ;
-        for ( let temp = this.Y0; temp <= this.Y1 ; temp += 1 ) {
-            this.ctx.fillText(Number(temp).toFixed(0),this.X(this.X0),this.Y(temp)) ;
-        }
         this.ctx.font = `${this.scaleX}px san serif` ;
         this.ctx.fillStyle = "gray" ;
         for ( let time = this.X0+4; time < this.X1 ; time += 4 ) {
@@ -359,6 +394,7 @@ class Week extends Plot {
     Xlimits() {
         this.X0 = 0;
         this.X1 = 7;
+        this.scaleX = (this.width-2*this.padX)/(this.X1-this.X0) ;
     }
     data() {
         this.Ys={};
@@ -380,15 +416,11 @@ class Week extends Plot {
         this.ctx.strokeStyle = "lightgray" ;
         
         this.vert( .25, 1 ) ;
-        this.horz( 1, 1 ) ;
         this.vert( .5, 2 ) ;
         this.vert( 1, 4 ) ;
         
-        this.ctx.font = `${this.scaleY/2}px san serif` ;
-        this.ctx.fillStyle = "gray" ;
-        for ( let temp = this.Y0; temp <= this.Y1 ; temp += 1 ) {
-            this.ctx.fillText(Number(temp).toFixed(0),this.X(this.X0),this.Y(temp)) ;
-        }
+        this.horz() ;
+        
         this.ctx.font = `${this.scaleX}px san serif` ;
         this.ctx.fillStyle = "gray" ;
         for ( let time = this.X0; time <= this.X1 ; time += 1 ) {
@@ -405,6 +437,7 @@ class Month extends Plot {
     Xlimits() {
         this.X0 = 0;
         this.X1 = 31;
+        this.scaleX = (this.width-2*this.padX)/(this.X1-this.X0) ;
     }
     data() {
         this.Ys={};
@@ -426,21 +459,16 @@ class Month extends Plot {
         this.ctx.strokeStyle = "lightgray" ;
         
         this.vert( .5, 1 ) ;
-        this.horz( 1, 1 ) ;
         this.vert( 1, 2 ) ;
         this.vert( 7, 4 ) ;
+        
+        this.horz() ;
                 
-        this.ctx.font = `${this.scaleY/2}px san serif` ;
-        this.ctx.fillStyle = "gray" ;
-        for ( let temp = this.Y0; temp <= this.Y1 ; temp += 1 ) {
-            this.ctx.fillText(Number(temp).toFixed(0),this.X(this.X0),this.Y(temp)) ;
-        }
         this.ctx.font = `${this.scaleX}px san serif` ;
         this.ctx.fillStyle = "gray" ;
         for ( let time = this.X0; time <= this.X1 ; time += 7 ) {
             let date = new Date(globals.daystart);
-            date.setDate(date.getDate()+(time-this.X1));
-            console.log(globals.daystart,time,this.X0,this.X1,date);
+            date.setDate(date.getDate()+(time-this.X0));
             this.ctx.fillText(date.toLocaleDateString('en-US', {month: 'short', day: 'numeric'}),this.X(time),this.Y(this.Y0)+0.5);
         }
     }
