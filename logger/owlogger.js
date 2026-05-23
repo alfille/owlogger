@@ -277,23 +277,18 @@ class Plot {
         this.scaleY = (this.height-2*this.padY)/(this.Y1-this.Y0) ;
         this.Ymajor = 1 ;
         this.Yminor = .5 ;
-        while (true) {
-            if ( ( this.Y1 - this.Y0 ) <  2 * this.Ymajor ) {
-                this.Ymajor /= 5 ;
-                this.Yminor /= 2 ;
-            } else if ( ( this.Y1- this.Y0 ) < 5 * this.Ymajor ) {
-                this.Ymajor /= 2 ;
-                this.Yminor /= 5 ;
-            } else if ( ( this.Y1 - this.Y0 ) > 20 * this.Ymajor ) {
-                this.Ymajor *= 5 ;
-                this.Yminor *= 2 ;
-            } else if ( ( this.Y1 - this.Y0 ) > 10 * this.Ymajor ) {
-                this.Ymajor *= 2 ;
-                this.Yminor *= 5 ;
-            } else {
-                break ;
-            }
+        if ( this.Y1 > 300 ) {
+            this.Ymajor = 100 ;
+        } else if ( this.Y1 > 30 ) {
+            this.Ymajor = 10 ;
+        } else {
+            this.Ymajor = 1 ;
         }
+        if ( (this.Y1-this.Y0) > 7 * this.Ymajor ) {
+            this.Ymajor *= 2 ;
+        }
+        this.Yminor = this.Ymajor /10 ;
+        this.Y0 = this.Y0 - ( this.Y0 % this.Yminor ) ;  
     }
         
     filter() {
@@ -331,10 +326,12 @@ class Plot {
         // major grid
         this.ctx.lineWidth = 3 ;
         this.ctx.beginPath() ;
-        for ( let temp = this.Y0; temp <= this.Y1 ; temp += this.Ymajor ) {
+        for ( let temp = this.Y0; temp <= this.Y1 ; temp += this.Yminor ) {
             // horz
-            this.ctx.moveTo( this.X(this.X0),this.Y(temp) ) ;
-            this.ctx.lineTo( this.X(this.X1),this.Y(temp) ) ;
+            if ( temp % this.Ymajot == 0 ) {
+                this.ctx.moveTo( this.X(this.X0),this.Y(temp) ) ;
+                this.ctx.lineTo( this.X(this.X1),this.Y(temp) ) ;
+            }
         }
         this.ctx.stroke() ;
         // scale
