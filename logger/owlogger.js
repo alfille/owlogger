@@ -328,17 +328,20 @@ class Plot {
         this.ctx.beginPath() ;
         for ( let temp = this.Y0; temp <= this.Y1 ; temp += this.Yminor ) {
             // horz
-            if ( temp % this.Ymajot == 0 ) {
+            if ( temp % this.Ymajor == 0 ) {
                 this.ctx.moveTo( this.X(this.X0),this.Y(temp) ) ;
                 this.ctx.lineTo( this.X(this.X1),this.Y(temp) ) ;
             }
         }
         this.ctx.stroke() ;
         // scale
-        this.ctx.font = `${this.scaleY*this.Ymajor/2}px san serif` ;
+        this.ctx.font = `${this.scaleY*this.Yminor}px san serif` ;
         this.ctx.fillStyle = "gray" ;
-        for ( let temp = this.Y0; temp <= this.Y1 ; temp += this.Ymajor ) {
-            this.ctx.fillText(Number(temp).toFixed(0),this.X(this.X0),this.Y(temp)) ;
+        for ( let temp = this.Y0; temp <= this.Y1 ; temp += this.Yminor ) {
+            // horz
+            if ( temp % this.Ymajor == 0 ) {
+                this.ctx.fillText(Number(temp).toFixed(0),this.X(this.X0),this.Y(temp)) ;
+            }
         }
     }
     setup() {
