@@ -281,12 +281,18 @@ class Plot {
             // bring scale within log 10 range
             this.Ymajor *= 10 ;
         }
+        while ( Math.floor(this.Y1 / this.Ymajor) - Math.floor(this.Y0 / this.Ymajor) < 2 ) {
+            // Need enough resolution for the scale
+            this.Ymajor /= 10 ;
+        }
+        let major_overload = 0
         while ( this.Y1 - this.Y0 > 7 * this.Ymajor ) {
             // need fewer that 7 majors on left scale
-            this.Ymajor *= 2 ;
+            this.Ymajor *= [2,2.5][major_overload % 2] ;
+            ++ major_overload ;
         }
         this.Yminor = this.Ymajor /10 ;
-        this.Y0 = this.Y0 - ( this.Y0 % this.Yminor ) ;  
+        this.Y0 = Math.floor(this.Y0 / this.Yminor) * this.Yminor ;  
     }
         
     filter() {
