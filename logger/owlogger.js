@@ -273,7 +273,7 @@ class Plot {
         this.scaleX = (this.width-2*this.padX)/(this.X1-this.X0) ;
     }
     logg(type) {
-        console.log( `${this} range ${this.Y0}-${this.Y1} major ${this.Ymajor}` ) ;
+        console.log( `${type} range ${this.Y0}-${this.Y1} major ${this.Ymajor}` ) ;
     }
     Ylimits() {
         this.Y1 = Math.round( this.maxY + 1 );
