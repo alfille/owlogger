@@ -216,6 +216,7 @@ class Plot {
           "ForestGreen", "Maroon", "SteelBlue", "DarkGoldenrod", "DarkViolet", 
           "Sienna", "Teal", "IndianRed", "DarkGreen", "Red"
         ];
+        this.color_len = this.colors.length;
     }
     jump() {
         if ( 'orientation' in screen ) {
@@ -248,7 +249,7 @@ class Plot {
         const legend = document.getElementById("legend");
         Object.keys(this.select).forEach( (key,i) =>{
             const bu = document.createElement("button");
-            bu.style.backgroundColor=this.colors[i];
+            bu.style.backgroundColor=this.colors[i%this.color_len];
             bu.classList.add("blegend");
             bu.innerHTML=`&#9949;&nbsp${key}`;
             bu.onclick=()=>{
@@ -276,15 +277,12 @@ class Plot {
         this.Y0 = Math.round( this.minY - 2 );
         this.scaleY = (this.height-2*this.padY)/(this.Y1-this.Y0) ;
         this.Ymajor = 1 ;
-        this.Yminor = .5 ;
-        if ( this.Y1 > 300 ) {
-            this.Ymajor = 100 ;
-        } else if ( this.Y1 > 30 ) {
-            this.Ymajor = 10 ;
-        } else {
-            this.Ymajor = 1 ;
+        while ( this.Y1 - this.Y0 > 30 * this.Ymajor ) {
+            // bring scale within log 10 range
+            this.Ymajor *= 10 ;
         }
-        if ( (this.Y1-this.Y0) > 7 * this.Ymajor ) {
+        while ( this.Y1 - this.Y0 > 7 * this.Ymajor ) {
+            // need fewer that 7 majors on left scale
             this.Ymajor *= 2 ;
         }
         this.Yminor = this.Ymajor /10 ;
@@ -314,7 +312,7 @@ class Plot {
         this.ctx.stroke() ;
     }
     horz() {
-        // minot grid
+        // minor grid
         this.ctx.lineWidth = 1 ;
         this.ctx.beginPath() ;
         for ( let temp = this.Y0; temp <= this.Y1 ; temp += this.Yminor ) {
@@ -328,18 +326,18 @@ class Plot {
         this.ctx.beginPath() ;
         for ( let temp = this.Y0; temp <= this.Y1 ; temp += this.Yminor ) {
             // horz
-            if ( temp % this.Ymajor == 0 ) {
+            if ( Math.abs(temp % this.Ymajor) < 1e-9 ) {
                 this.ctx.moveTo( this.X(this.X0),this.Y(temp) ) ;
                 this.ctx.lineTo( this.X(this.X1),this.Y(temp) ) ;
             }
         }
         this.ctx.stroke() ;
         // scale
-        this.ctx.font = `${this.scaleY*this.Yminor}px san serif` ;
+        this.ctx.font = `${this.scaleY*this.Yminor}px san-serif` ;
         this.ctx.fillStyle = "gray" ;
         for ( let temp = this.Y0; temp <= this.Y1 ; temp += this.Yminor ) {
             // horz
-            if ( temp % this.Ymajor == 0 ) {
+            if ( Math.abs(temp % this.Ymajor) <1e-9 ) {
                 this.ctx.fillText(Number(temp).toFixed(0),this.X(this.X0),this.Y(temp)) ;
             }
         }
@@ -355,7 +353,7 @@ class Plot {
         
         this.horz() ;
                 
-        this.ctx.font = `${this.scaleX}px san serif` ;
+        this.ctx.font = `${this.scaleX}px san-serif` ;
         this.ctx.fillStyle = "gray" ;
         for ( let time = this.X0+4; time < this.X1 ; time += 4 ) {
             this.ctx.fillText(Number(time).toFixed(0),this.X(time),this.Y(this.Y0)+0.5);
@@ -365,7 +363,7 @@ class Plot {
         this.ctx.lineWidth=3;
         Object.keys(this.Ys).forEach( (k,i) => {
             if ( this.select[k] ) {
-                this.ctx.strokeStyle=this.colors[i] ;
+                this.ctx.strokeStyle=this.colors[i%this.color_len] ;
                 this.ctx.lineWidth=3;
                 this.ctx.beginPath() ;
                 this.Ys[k].forEach( xy => {
@@ -421,14 +419,14 @@ class Week extends Plot {
         
         this.horz() ;
         
-        this.ctx.font = `${this.scaleX}px san serif` ;
+        this.ctx.font = `${this.scaleX}px san-serif` ;
         this.ctx.fillStyle = "gray" ;
         for ( let time = this.X0; time <= this.X1 ; time += 1 ) {
             this.ctx.fillText(Number(time).toFixed(0),this.X(time),this.Y(this.Y0)+0.5);
         }
     }
 }
-class Month extends Plot {
+class Month extends Week {
     jump() {
         if ( 'orientation' in screen ) {
             screen.orientation.addEventListener('change', () => JumpTo.type('month') );
@@ -438,20 +436,6 @@ class Month extends Plot {
         this.X0 = 0;
         this.X1 = 31;
         this.scaleX = (this.width-2*this.padX)/(this.X1-this.X0) ;
-    }
-    data() {
-        this.Ys={};
-        this.select={};
-        globals.dayData.forEach( row => {
-            const time= Number(row[0]) ;
-            const key = row[1] ;
-            if ( !(key in this.Ys) ) {
-                this.Ys[key] = [] ;
-                this.select[key] = true;
-            }
-            const numbers = ((row[2].match(/-?(\d+\.?\d*|\.?\d+)/g))??[]).map(Number) ;
-            numbers.forEach( n => this.Ys[key].push([time,n]));
-        });
     }
     setup() {
         this.ctx.fillStyle = "white" ;
@@ -464,7 +448,7 @@ class Month extends Plot {
         
         this.horz() ;
                 
-        this.ctx.font = `${this.scaleX}px san serif` ;
+        this.ctx.font = `${this.scaleX}px san-serif` ;
         this.ctx.fillStyle = "gray" ;
         for ( let time = this.X0; time <= this.X1 ; time += 7 ) {
             let date = new Date(globals.daystart);
