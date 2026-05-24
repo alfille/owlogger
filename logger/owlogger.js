@@ -272,33 +272,25 @@ class Plot {
         this.X1 = 24;
         this.scaleX = (this.width-2*this.padX)/(this.X1-this.X0) ;
     }
-    logg(type) {
-        console.log( `${type} range ${this.Y0}-${this.Y1} major ${this.Ymajor}` ) ;
-    }
     Ylimits() {
         this.Y1 = Math.round( this.maxY + 1 );
         this.Y0 = Math.round( this.minY - 2 );
         this.scaleY = (this.height-2*this.padY)/(this.Y1-this.Y0) ;
         this.Ymajor = 1 ;
-        this.logg("scale_start") ;
         while ( this.Y1 - this.Y0 > 30 * this.Ymajor ) {
             // bring scale within log 10 range
-            this.logg("scale_size") ;
             this.Ymajor *= 10 ;
         }
         while ( Math.floor(this.Y1 / this.Ymajor) - Math.floor(this.Y0 / this.Ymajor) < 2 ) {
             // Need enough resolution for the scale
-            this.logg("scale_resolution") ;
             this.Ymajor /= 10 ;
         }
         let major_overload = 0
         while ( this.Y1 - this.Y0 > 7 * this.Ymajor ) {
             // need fewer that 7 majors on left scale
-            this.logg("scale_overload") ;
             this.Ymajor *= [2,2.5][major_overload % 2] ;
             ++ major_overload ;
         }
-        this.logg("scale_done") ;
         this.Yminor = this.Ymajor /10 ;
         this.Y0 = Math.floor(this.Y0 / this.Yminor) * this.Yminor ;  
     }
