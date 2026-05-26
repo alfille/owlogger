@@ -49,6 +49,7 @@ from io import BytesIO
 import json
 import os
 import sys
+import re
 import logging # forwarded to gunicorn
 import tomllib
 from urllib.parse import urlparse
@@ -68,7 +69,7 @@ except ImportError:
 
 # for Image
 try:
-    from PIL import Image, ImageDraw
+    from PIL import Image, ImageDraw, ImageFont
 except ImportError:
     logging.error("PIL (Pillow) module needs to be installed. Do 'pip install Pillow' or 'apt install python3-pil'")
     sys.exit(1)
@@ -215,6 +216,7 @@ def init_app(
         or toml.get("address")
         or _DEFAULT_ADDRESS
     )
+    
     return _address_tuple(addr_str, _DEFAULT_PORT)
 
 
@@ -360,13 +362,75 @@ def serve_static(filename):
 # Frame-buffer / PNG routes
 # ---------------------------------------------------------------------------
 
+class BitMap:
+    # send a bitmap to client
+    def __init__( self, width=800, height=400 ):
+        self.width = width
+        self.height = height
+        self.white = 1
+        self.black = 0
+        self.nums = re.compile(r"-?\d+\.?\d*|-?\.\d+")
+
+        self.img = Image.new('1', (self.width, self.height), color=self.white)
+        self.draw = ImageDraw.Draw(self.img)
+
+        # Try to load a real font; fall back to PIL default
+        try:
+            self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", size=14)
+        except (IOError, OSError):
+            self.font = ImageFont.load_default()
+        self.cache_letters()
+        
+    def cache_letters( self ):
+        self.caps = [chr(i) for i in range( ord('A'), ord('Z')+1 )]
+        self.caps_len = len(self.caps)
+        self.bounds = {}
+        for a in self.caps:
+            bbox = self.draw.textbbox((0, 0), a, font=self.font)
+            self.bounds[a] = ( (bbox[2]-bbox[0])//2, (bbox[3]-bbox[1])//2 )
+    
+    def letter( self, i ):
+        return self.caps[ i % self.caps_len ]
+
+    def point( self, x , y , i ):
+        a = self.letter(i)
+        w, h = self.bounds[a]
+        self.draw.text( (x-w, y-h), a, fill=self.black, font=self.font )
+        
+    def key_range( self, data ):
+        self.sense = {}
+        sense_list = set( [t[1] for t in data] )
+        for i,k in enumerate(sense_list):
+            self.sense[k] = self.letter(i)
+    
+    def X( self, time ):
+        # Data in last 24 hours (-24 to 0)
+        return (time + 24) * self.width / 24
+        
+    def Y( self, temp ):
+        return ( self.Y1 - temp ) * self.height / ( self.Y1 - self.Y0 )
+        
+    def plot( self ):
+        data = self.get_data()
+        self.key_range(data)
+        self.Y0,self.Y1 = self.temp_range( data )
+        for d in data:
+            a = self.sense[d[1]]
+            for y in d[2]:
+                self.point( self.X(d[0]),self.Y(y),a)
+        return self.img
+
+    def temp_range( self, data ):
+        date = [t[2] for t in data]
+        return ( min(map(min,date),default=-2), max(map(max,date),default=1) )
+
+    def get_data( self ):
+        return [ ( t[0], t[1], list(map(float,self.nums.findall(t[2]))) ) for t in db.plot_data() ]
+
 def _create_image(width=800, height=480):
-    white, black = 1, 0
-    img = Image.new('1', (width, height), color=white)
-    draw = ImageDraw.Draw(img)
-    draw.rectangle([20, 20, width - 20, height - 20], outline=0, width=5)
-    draw.text((width // 2, height // 2), "REMOTE DASHBOARD", fill=black)
-    return img
+    # ── bitmap for monochrome screen ────
+    bitmap = BitMap( width, height )
+    return bitmap.plot()
 
 
 @app.route('/7in5')
@@ -579,27 +643,30 @@ class Database:
                WHERE DATE(date,'localtime') BETWEEN DATE(?) AND DATE(?) ORDER BY t""",
             (day.isoformat(), nextday.isoformat()))
 
-    def week_data(self, day):
+    def back_data(self, day, back_days):
         nextday  = day + datetime.timedelta(days=1)
-        firstday = day + datetime.timedelta(days=-6)
-        records = self.fetch(
+        firstday = day + datetime.timedelta(days=-back_days)
+        return self.fetch(
             """SELECT strftime('%J',date,'localtime')-strftime("%J",?,'localtime') as t, source, value
                FROM datalog
                WHERE DATE(date,'localtime') BETWEEN DATE(?) AND DATE(?) ORDER BY t""",
             (firstday.isoformat(), firstday.isoformat(), nextday.isoformat()))
-        logging.debug(records)
-        return records
+
+    def plot_data(self):
+        return self.fetch(
+            """SELECT (strftime('%J',date)-strftime('%J','now'))*24 as t, source, value
+               FROM datalog
+               WHERE date >= datetime('now','-1 day') ORDER BY t""",())
+
+    def plot_now(self):
+        return self.fetch(
+            """SELECT strftime('%J','now','localtime'),(strftime('%J','now','localtime'))*24""",())
+
+    def week_data(self, day):
+        return self.back_data( day, 6 )
 
     def month_data(self, day):
-        nextday  = day + datetime.timedelta(days=1)
-        firstday = day + datetime.timedelta(days=-30)
-        records = self.fetch(
-            """SELECT strftime('%J',date,'localtime')-strftime("%J",?,'localtime') as t, source, value
-               FROM datalog
-               WHERE DATE(date,'localtime') BETWEEN DATE(?) AND DATE(?) ORDER BY t""",
-            (firstday.isoformat(), firstday.isoformat(), nextday.isoformat()))
-        logging.debug(records)
-        return records
+        return self.back_data( day, 30 )
 
     def distinct_days(self, day):
         firstday = day + datetime.timedelta(days=-34)
@@ -643,7 +710,6 @@ class Database:
         except sqlite3.Error as e:
             logging.error(f"Database reading error <{self.database}>: {e}")
             raise
-        return None # Should never be reached
 
     def command(self, cmd, value_tuple=None):
         """SQL non-fetch command (add data or configure)"""
