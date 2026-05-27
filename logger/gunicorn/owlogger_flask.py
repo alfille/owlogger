@@ -388,20 +388,21 @@ class BitMap:
         for a in self.caps:
             bbox = self.draw.textbbox((0, 0), a, font=self.font)
             self.bounds[a] = ( (bbox[2]-bbox[0])//2, (bbox[3]-bbox[1])//2 )
+        bbox = self.draw.textbbox((0, 0), '#', font=self.font)
+        self.bounds['#'] = ( (bbox[2]-bbox[0])//2, (bbox[3]-bbox[1])//2 )
     
-    def letter( self, i ):
-        return self.caps[ i % self.caps_len ]
-
-    def point( self, x , y , i ):
-        a = self.letter(i)
+    def point( self, x , y , a ):
         w, h = self.bounds[a]
         self.draw.text( (x-w, y-h), a, fill=self.black, font=self.font )
         
     def key_range( self, data ):
         self.sense = {}
-        sense_list = set( [t[1] for t in data] )
+        sense_list = sorted(set( [t[1] for t in data] ))
         for i,k in enumerate(sense_list):
-            self.sense[k] = self.letter(i)
+            if i < self.caps_len:
+                self.sense[k] = self.caps[i]
+            else:
+                self.sense[k] = '#'
     
     def X( self, time ):
         # Data in last 24 hours (-24 to 0)
@@ -441,7 +442,8 @@ def frame_buffer():
     resp = Response(
         raw_buffer,
         status=200,
-        content_type='application/octet-stream',
+#        content_type='application/octet-stream',
+        content_type='image/png',
         headers={'Content-Length': str(len(raw_buffer))}
     )
     logging.debug(f"Sent {len(raw_buffer)} bytes")
