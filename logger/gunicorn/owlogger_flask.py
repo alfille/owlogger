@@ -50,6 +50,7 @@ import json
 import os
 import sys
 import re
+import math
 import logging # forwarded to gunicorn
 import tomllib
 from urllib.parse import urlparse
@@ -377,8 +378,10 @@ class BitMap:
         # Try to load a real font; fall back to PIL default
         try:
             self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", size=14)
+            self.axisfont = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", size=20)
         except (IOError, OSError):
             self.font = ImageFont.load_default()
+            self.axisfont = ImageFont.load_default()
         self.cache_letters()
         
     def cache_letters( self ):
@@ -414,16 +417,69 @@ class BitMap:
     def plot( self ):
         data = self.get_data()
         self.key_range(data)
-        self.Y0,self.Y1 = self.temp_range( data )
+        self.y_limits()
+        self.horz()
         for d in data:
             a = self.sense[d[1]]
             for y in d[2]:
                 self.point( self.X(d[0]),self.Y(y),a)
         return self.img
 
-    def temp_range( self, data ):
-        date = [t[2] for t in data]
-        return ( min(map(min,date),default=-2), max(map(max,date),default=1) )
+    def y_limits( self, data ):
+        y = [t[2] for t in data]
+
+        # Math.round() rounds to the nearest integer.
+        self.Y1 = round(max(map(max,y),default=1) + 1)
+        self.Y0 = round(min(map(min,y),default=0) - 2)
+        
+        self.Ymajor = 1.0
+        
+        while self.Y1 - self.Y0 > 30 * self.Ymajor:
+            # bring scale within log 10 range
+            self.Ymajor *= 10
+            
+        while math.floor(self.Y1 / self.Ymajor) - math.floor(self.Y0 / self.Ymajor) < 2:
+            # Need enough resolution for the scale
+            self.Ymajor /= 10
+            
+        major_overload = 0
+        while self.Y1 - self.Y0 > 7 * self.Ymajor:
+            # need fewer than 7 majors on left scale
+            # Uses a list look-up alternating between 2 and 2.5
+            self.Ymajor *= [2, 2.5][major_overload % 2]
+            major_overload += 1
+            
+        self.Yminor = self.Ymajor / 10
+        self.Y0 = math.floor(self.Y0 / self.Yminor) * self.Yminor
+
+    def horz(self, draw):
+        # --- Minor Grid ---
+        temp = self.Y0
+        while temp <= self.Y1:
+            # Define line coordinates using your coordinate mapping methods self.X() and self.Y()
+            x_start = self.X(self.X0)
+            y = self.Y(temp)
+            x_end = self.X(self.X1)
+            
+            # Draw minor line (default thin width)
+            draw.line([(x_start, y), (x_end, y)], fill=self.black, width=1)
+            
+            temp += self.Yminor
+
+        # --- Major Grid ---
+        temp = self.Y0
+        while temp <= self.Y1:
+            # Floating point modulo safety check
+            if abs(temp % self.Ymajor) < 1e-9:
+                x_start = self.X(self.X0)
+                y = self.Y(temp)
+                x_end = self.X(self.X1)
+                
+                # Draw major line (thicker line width = 3)
+                draw.line([(x_start, y), (x_end, y], fill=self.black, width=3)
+                draw.text((x_start, y), f"{temp:.0f}", font=self.axisfont, fill=self.black)
+                
+            temp += self.Yminor
 
     def get_data( self ):
         return [ ( t[0], t[1], list(map(float,self.nums.findall(t[2]))) ) for t in db.plot_data() ]
