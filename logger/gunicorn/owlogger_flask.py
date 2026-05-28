@@ -417,7 +417,9 @@ class BitMap:
     def plot( self ):
         data = self.get_data()
         self.key_range(data)
-        self.y_limits()
+        self.y_limits(data)
+        self.X0 = -24
+        self.X1 = 0
         self.horz()
         for d in data:
             a = self.sense[d[1]]
@@ -452,7 +454,7 @@ class BitMap:
         self.Yminor = self.Ymajor / 10
         self.Y0 = math.floor(self.Y0 / self.Yminor) * self.Yminor
 
-    def horz(self, draw):
+    def horz(self):
         # --- Minor Grid ---
         temp = self.Y0
         while temp <= self.Y1:
@@ -462,7 +464,7 @@ class BitMap:
             x_end = self.X(self.X1)
             
             # Draw minor line (default thin width)
-            draw.line([(x_start, y), (x_end, y)], fill=self.black, width=1)
+            self.draw.line([(x_start, y), (x_end, y)], fill=self.black, width=1)
             
             temp += self.Yminor
 
@@ -476,8 +478,8 @@ class BitMap:
                 x_end = self.X(self.X1)
                 
                 # Draw major line (thicker line width = 3)
-                draw.line([(x_start, y), (x_end, y], fill=self.black, width=3)
-                draw.text((x_start, y), f"{temp:.0f}", font=self.axisfont, fill=self.black)
+                self.draw.line([(x_start, y), (x_end, y)], fill=self.black, width=3)
+                self.draw.text((x_start, y), f"{temp:.0f}", font=self.axisfont, fill=self.black)
                 
             temp += self.Yminor
 
@@ -499,7 +501,7 @@ def frame_buffer():
         raw_buffer,
         status=200,
 #        content_type='application/octet-stream',
-        content_type='image/png',
+        content_type='image/x-raw',
         headers={'Content-Length': str(len(raw_buffer))}
     )
     logging.debug(f"Sent {len(raw_buffer)} bytes")
