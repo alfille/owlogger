@@ -51,6 +51,7 @@ import os
 import sys
 import re
 import math
+import random
 import logging # forwarded to gunicorn
 import tomllib
 from urllib.parse import urlparse
@@ -421,6 +422,7 @@ class BitMap:
         self.X0 = -24
         self.X1 = 0
         self.horz()
+        self.vert()
         for d in data:
             a = self.sense[d[1]]
             for y in d[2]:
@@ -463,25 +465,48 @@ class BitMap:
             y = self.Y(temp)
             x_end = self.X(self.X1)
             
-            # Draw minor line (default thin width)
-            self.draw.line([(x_start, y), (x_end, y)], fill=self.black, width=1)
-            
+            if abs(temp % self.Ymajor) < 1e-9:
+                # --- Major Grid ---
+                self.draw.line([(x_start, y), (x_end, y)], fill=self.black, width=1)
+                self.draw.text((x_start, y), f"{temp:.0f}", font=self.axisfont, fill=self.black)
+            else :
+                # Draw minor line (dash)
+                x = x_start + (temp % 7)
+                while x < x_end :
+                    self.draw.line([(x, y), (x+3, y)], fill=self.black, width=1)
+                    x += random.randrange(8,11)
+
             temp += self.Yminor
 
-        # --- Major Grid ---
-        temp = self.Y0
-        while temp <= self.Y1:
-            # Floating point modulo safety check
-            if abs(temp % self.Ymajor) < 1e-9:
-                x_start = self.X(self.X0)
-                y = self.Y(temp)
-                x_end = self.X(self.X1)
-                
-                # Draw major line (thicker line width = 3)
-                self.draw.line([(x_start, y), (x_end, y)], fill=self.black, width=3)
-                self.draw.text((x_start, y), f"{temp:.0f}", font=self.axisfont, fill=self.black)
-                
-            temp += self.Yminor
+    def vert(self):
+        now = db.plot_now()[0][0] % 1
+        marks = [
+            ( 0., "N"),
+            ( 4., "4p"),
+            ( 8., "8p"),
+            (12., "MN"),
+            (16., "4a"),
+            (20., "8a"),
+            ]
+        for t in range(0,24):
+            rel = t/24-now
+            rel = ( (rel+3)%1 ) - 1
+            # Draw minor line (dash)
+            x = self.X(rel*24)
+            y = self.Y(self.Y1)
+            y_end = self.Y(self.Y0)
+            while y < y_end :
+                self.draw.line([(x, y), (x, y+3)], fill=self.black, width=1)
+                y += random.randrange(8,11)
+
+        for t in marks:
+            rel = t[0]/24-now
+            rel = ( (rel+3)%1 ) - 1
+            x = self.X(rel*24)
+            y_start = self.Y(self.Y0)
+            y_end = self.Y(self.Y1)
+            self.draw.line([(x, y_start), (x, y_end)], fill=self.black, width=1)
+            self.draw.text((x, self.Y(self.Y0)-20), t[1], font=self.axisfont, fill=self.black)
 
     def get_data( self ):
         return [ ( t[0], t[1], list(map(float,self.nums.findall(t[2]))) ) for t in db.plot_data() ]
@@ -720,7 +745,7 @@ class Database:
 
     def plot_now(self):
         return self.fetch(
-            """SELECT strftime('%J','now','localtime'),(strftime('%J','now','localtime'))*24""",())
+            """SELECT strftime('%J','now','localtime')*1""",())
 
     def week_data(self, day):
         return self.back_data( day, 6 )
