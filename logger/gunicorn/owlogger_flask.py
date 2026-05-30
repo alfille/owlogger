@@ -459,6 +459,7 @@ class BitMap:
     def horz(self):
         # --- Minor Grid ---
         temp = self.Y0
+        print(self.X0,self.X1,self.Y0,self.Y1,self.Ymajor,self.Yminor)
         while temp <= self.Y1:
             # Define line coordinates using your coordinate mapping methods self.X() and self.Y()
             x_start = self.X(self.X0)
