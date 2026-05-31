@@ -4,7 +4,7 @@ import os
 import sys
 import network
 import time
-import urllib.urequest as urequest
+import urllib.request as urequest
 import base64
 import gc
 import machine
