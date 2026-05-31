@@ -480,7 +480,7 @@ class BitMap:
             temp += self.Yminor
 
     def vert(self):
-        now = db.plot_now()[0][0] % 1
+        now = db.now_time()
         marks = [
             ( 0., "N"),
             ( 4., "4p"),
@@ -744,9 +744,11 @@ class Database:
                FROM datalog
                WHERE date >= datetime('now','-1 day') ORDER BY t""",())
 
-    def plot_now(self):
+    def now_time(self):
+        # returns sqlite3's version of fraction of day of current time
+        # 0 = noon, 1 = 11:59 am
         return self.fetch(
-            """SELECT strftime('%J','now','localtime')*1""",())
+            """SELECT strftime('%J','now','localtime')*1""",())[0][0] % 1
 
     def week_data(self, day):
         return self.back_data( day, 6 )
