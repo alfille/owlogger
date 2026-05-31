@@ -147,8 +147,8 @@ class Get:
         return False
 
     def stop_connection( self ):
-        if self.wlan:
         """Disconnect from WiFi"""
+        if self.wlan:
             if self.wlan.isconnected():
                 self.wlan.disconnect()
                 print("WiFi disconnected")
@@ -284,7 +284,7 @@ class EPD_7in5:
         """Send data chunk to display"""
         self.dc.value(1)
         self.cs.value(0)
-        self.spi.write(data[s:s+1024])
+        self.spi.write(data)
         self.cs.value(1)
     
     def wait_if_busy(self):
