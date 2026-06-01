@@ -90,6 +90,7 @@ class Get:
                 self.url = "{}7in5".format(self.server)
             else:
                 self.url = "{}/7in5".format(self.server)
+            print("URL",self.url)
             return True
         else:
             print("No server in TOML file")
@@ -118,6 +119,7 @@ class Get:
                 "Connection": "close"
             }
             print("No username / password")
+        print( "HEADER",self.headers )
 
     def get_connection( self ):
         network.country(self.WIFI_REGION)
