@@ -5,7 +5,7 @@ import sys
 import network
 import time
 import urequests
-import base64
+import ubinascii
 import gc
 import machine
 from machine import Pin, SPI
@@ -109,7 +109,7 @@ class Get:
     def get_headers( self ):
         if self.username and self.password:
             auth_str = f"{self.username}:{self.password}"
-            auth_b64 = base64.b64encode(auth_str.encode()).decode()
+            auth_b64 = ubinascii.b2a_base64(auth_str.encode()).decode()
             self.headers = {
                 "Authorization": "Basic " + auth_b64,
                 "Accept": "application/octet-stream",
