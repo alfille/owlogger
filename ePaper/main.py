@@ -170,6 +170,7 @@ class Get:
                     return True
                 
                 print(f"buffer received size incorrect {len(self.buffer)} not {self.BUFFER_SIZE}")
+                print( self.buffer )
                 self.buffer = None
             
             except Exception as e:
@@ -299,8 +300,8 @@ class EPD_7in5:
         # Send old image (white)
         print("  Clearing old image...")
         self._command(self.DATA_START_TRANSMISSION_1)
-        white_line = bytearray([0xFF] * self.WIDTH // 8)
-        for _ in range(self.HEIGHT):  # 48000 / 100
+        white_line = bytearray([0xFF] * 100 ) # self.WIDTH // 8
+        for _ in range(480):  # 48000 / 100
             self._data_chunk(white_line)
         wdt.feed()
         
