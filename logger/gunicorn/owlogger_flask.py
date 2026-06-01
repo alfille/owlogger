@@ -523,6 +523,7 @@ def _create_image(width=800, height=480):
 def frame_buffer():
     img = _create_image(800, 480)
     raw_buffer = img.tobytes()
+    print(f"Raw Buffer size {len(raw_buffer)}")
     resp = Response(
         raw_buffer,
         status=200,
