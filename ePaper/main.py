@@ -18,7 +18,6 @@ wdt = machine.WDT(timeout=120000) #timeout
 
 class Get:
     WIFI_REGION = "US"
-    BUFFER_SIZE = 48000 # 480 * 800 // 8
 
     def __init__(self ):
         self.buffer = None
@@ -27,12 +26,12 @@ class Get:
         self.close()
 
     def process( self ):
-        self.display = EPD_7in5()
-        self.display.init()
-
         if not self.get_toml():
             return
             
+        self.display = EPD_7in5( self.width, self.height )
+        self.display.init()
+
         if not self.get_server():
             return
         print("Server",self.server)
@@ -62,7 +61,7 @@ class Get:
         
         self.display.show_buffer(self.buffer)
         
-        self.display.sleep()
+        self.display.deep_sleep()
         print("Screen!")
         
     def get_toml( self ):
@@ -76,6 +75,8 @@ class Get:
                 self.wifi = toml.get("wifi", None )
                 self.username = toml.get( "username", None )
                 self.password = toml.get( "password", None )
+                self.width = toml.get( "width", 800 )
+                self.height = toml.get( "height", 480 )
                 return True
         except Exception as e:
             print(f"Cannot open TOML configuration file: owepaper.toml Error: {e}")
@@ -165,11 +166,11 @@ class Get:
                 wdt.feed()
                 response.close()
 
-                if len(self.buffer) == self.BUFFER_SIZE:
+                if len(self.buffer) == self.width * self.height:
                     print("Full size buffer!")
                     return True
                 
-                print(f"buffer received size incorrect {len(self.buffer)} not {self.BUFFER_SIZE}")
+                print(f"buffer received size incorrect {len(self.buffer)} not {self.width * self.height}")
                 print( self.buffer )
                 self.buffer = None
             
@@ -186,7 +187,7 @@ class Get:
         if not self.buffer:
             self.error_screen("No data received")
         self.stop_connection()
-        self.display.sleep()
+        self.display.deep_sleep()
 
 # Display controller commands
 class EPD_7in5:
@@ -200,15 +201,21 @@ class EPD_7in5:
     DEEP_SLEEP = 0x07 
     PANEL_SET = 0x00
     RESOLUTION_SET = 0x61
+    BOOSTER_SOFT = 0x06
     DUAL_SPI = 0x15
     VCOM_AND_DATA = 0x50
     TCON_SET = 0x60
-    WIDTH = 800
-    HEIGHT = 480
+    DATA_ENTRY = 0x11
+    RAM_X_SET = 0x44
+    RAM_Y_SET = 0x45
+    COUNTER_X_SET = 0x4E
+    COUNTER_Y_SET = 0x4F
     
-    def __init__(self, use_busy=False):
+    def __init__(self, width=800, height=480, use_busy=False):
         """Initialize display for remote buffer display"""
         self.use_busy = use_busy
+        self.width = width
+        self.height = height
         
         # Setup SPI
         self.spi = SPI(1, baudrate=4_000_000, polarity=0, phase=0,
@@ -226,39 +233,44 @@ class EPD_7in5:
         
         print("Display initialized for remote buffer")
     
-    def reset(self):
-        self.rst.value(1)
-        time.sleep_ms(200)
+    def _reset(self):
+        # ~ self.rst.value(1)
+        # ~ time.sleep_ms(200)
         self.rst.value(0)
-        time.sleep_ms(2)
+        time.sleep_ms(200)
         self.rst.value(1)
         time.sleep_ms(200)
         wdt.feed()
 
     def init(self):
-        self.reset()
-        self.wait_if_busy()
+        self._reset()
+        self._wait_if_busy()
         
         self._command(self.POWER_SET) # Power Setting
-        self._data_chunk([0x07, 0x07, 0x3f, 0x3f])
+        self._data_send([0x07, 0x07, 0x3f, 0x3f])
+        
+        self._command( self.BOOSTER_SOFT )
+        self._data_send([0x17, 0x17, 0x17])
         
         self._command(self.POWER_ON) # Power ON
-        self.wait_if_busy()
+        self._wait_if_busy()
         
         self._command(self.PANEL_SET) # Panel Setting
-        self._data_chunk([0x1F])    # KW-BF, KWR-AF, BWROTP
+        self._data_send([0x1F])    # KW-BF, KWR-AF, BWROTP
         
         self._command(self.RESOLUTION_SET) # Resolution setting
-        self._data_chunk([0x03, 0x20, 0x01, 0xE0]) # 800x480
+#        self._data_send([0x03, 0x20, 0x01, 0xE0]) # 800x480
+        self._data_send(list(self.width.to_bytes(2,'big')))
+        self._data_send(list(self.height.to_bytes(2,'big')))
         
         self._command(self.DUAL_SPI) # Dual SPI mode
-        self._data_chunk([0x00])
+        self._data_send([0x00])
         
         self._command(self.VCOM_AND_DATA) # VCOM and Data Interval
-        self._data_chunk([0x10, 0x07])
+        self._data_send([0x10, 0x07])
         
         self._command(self.TCON_SET) # TCON setting
-        self._data_chunk([0x22])
+        self._data_send([0x22])
 
     def _command(self, command):
         """Send command to display"""
@@ -267,14 +279,14 @@ class EPD_7in5:
         self.spi.write(bytearray([command]))
         self.cs.value(1)
     
-    def _data_chunk(self, data):
+    def _data_send(self, data):
         """Send data chunk to display"""
         self.dc.value(1)
         self.cs.value(0)
         self.spi.write(bytearray(data))
         self.cs.value(1)
     
-    def wait_if_busy(self):
+    def _wait_if_busy(self):
         """Wait for display if BUSY pin enabled"""
         if not self.use_busy or not self.busy:
             time.sleep_ms(2000)
@@ -300,10 +312,12 @@ class EPD_7in5:
         # Send old image (white)
         print("  Clearing old image...")
         self._command(self.DATA_START_TRANSMISSION_1)
-        white_line = bytearray([0xFF] * 100 ) # self.WIDTH // 8
-        for _ in range(480):  # 48000 / 100
-            self._data_chunk(white_line)
-        wdt.feed()
+        line = self.width // 8
+        white_line = bytearray([0xFF] * line ) # self.WIDTH // 8
+        for n in range(self.height):
+            self._data_send(white_line)
+            if n % 50 == 49:
+                wdt.feed()
         
         # Send new image
         print("  Transferring image buffer...")
@@ -313,7 +327,7 @@ class EPD_7in5:
         chunk_size = 1024  # 1KB chunks
         for i in range(0, len(buf), chunk_size):
             chunk = buf[i:i+chunk_size]
-            self._data_chunk(chunk)
+            self._data_send(chunk)
             # Yield to avoid watchdog timeout
             if i % 10240 == 0:  # Every ~10 chunks
                 time.sleep_ms(1)
@@ -322,16 +336,16 @@ class EPD_7in5:
         # Trigger refresh
         print("  Refreshing display...")
         self._command(self.DISPLAY_REFRESH)
-        self.wait_if_busy()
+        self._wait_if_busy()
         
         print("Display updated!")
         return True
 
-    def sleep(self):
+    def deep_sleep(self):
         self._command(self.POWER_OFF) # Power Off
-        self.wait_if_busy()
+        self._wait_if_busy()
         self._command(self.DEEP_SLEEP) # Deep Sleep
-        self._data_chunk([0xA5])
+        self._data_send([0xA5])
 
 
 def main(sysargs):
