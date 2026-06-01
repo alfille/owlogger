@@ -110,12 +110,12 @@ class Get:
             auth_b64 = ubinascii.b2a_base64(auth_str.encode()).decode().strip()
             self.headers = {
                 "Authorization": f"Basic {auth_b64}",
-                "Accept": "application/octet-stream",
+                "Accept": "image/x-raw",
                 "Connection": "close"
             }
         else:
             self.headers = {
-                "Accept": "application/octet-stream",
+                "Accept": "image/x-raw",
                 "Connection": "close"
             }
             print("No username / password")
@@ -179,18 +179,6 @@ class Get:
             
     def error_screen(self, text ):
         return
-        self.display.fb.fill(1) 
-        self.display.fb.rect(10, 10, 780, 460, 0) 
-        self.display.fb.fill_rect(10, 10, 780, 60, 0)
-        self.display.fb.text("OWLOGGER ePaper display", 280, 35, 1)
-        if not self.wlan:
-            self.display.fb.text("Device Status: EARLY FAIL", 30, 100, 0)            
-        elif self.wlan.isconnected():
-            self.display.fb.text("Device Status: CONNECTED", 30, 100, 0)
-        else:
-            self.display.fb.text("Device Status: NOT CONNECTED", 30, 100, 0)
-        self.display.fb.text("Display Type: 7.5 Inch Monochrome", 30, 120, 0)
-        self.display.fb.text(text, 30, 140, 0)
     
     def close( self ):
         wdt.feed()
