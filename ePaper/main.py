@@ -283,7 +283,7 @@ class EPD_7in5:
         """Send data chunk to display"""
         self.dc.value(1)
         self.cs.value(0)
-        self.spi.write(data)
+        self.spi.write(bytearray(data))
         self.cs.value(1)
     
     def wait_if_busy(self):
