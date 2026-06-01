@@ -111,7 +111,7 @@ class Get:
             auth_str = f"{self.username}:{self.password}"
             auth_b64 = ubinascii.b2a_base64(auth_str.encode()).decode()
             self.headers = {
-                "Authorization": "Basic " + auth_b64,
+                "Authorization": f"Basic {auth_b64}",
                 "Accept": "application/octet-stream",
                 "Connection": "close"
             }
@@ -120,7 +120,7 @@ class Get:
                 "Accept": "application/octet-stream",
                 "Connection": "close"
             }
-            print("No username / passord")
+            print("No username / password")
 
     def get_connection( self ):
         network.country(self.WIFI_REGION)
@@ -179,6 +179,7 @@ class Get:
         return False
             
     def error_screen(self, text ):
+        return
         self.display.fb.fill(1) 
         self.display.fb.rect(10, 10, 780, 460, 0) 
         self.display.fb.fill_rect(10, 10, 780, 60, 0)
