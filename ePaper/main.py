@@ -154,10 +154,11 @@ class Get:
                 print("WiFi disconnected")
 
     def get_buffer( self ):
-        for _ in range(0,4):
+        for attempt in range(0,4):
             self.buffer = None
             gc.collect() # clean up space
             wdt.feed()
+            print(f"Attempting to get buffer {attempt+1}")
             try:
                 response = urequests.get( self.url, headers=self.headers, timeout=15 )
                 wdt.feed()
@@ -166,17 +167,15 @@ class Get:
                 response.close()
 
                 if len(self.buffer) == self.BUFFER_SIZE:
+                    print("Full size buffer!")
                     return True
                 
                 print(f"buffer received size incorrect {len(self.buffer)} not {self.BUFFER_SIZE}")
                 self.buffer = None
             
-            except OSError as e:
-                # urllib.urequest raises OSError on HTTP errors
-                print(f"HTTP error: {e}")
-                
             except Exception as e:
-                print(f"Cannot get data {e}")
+                print(f"Error fetching buffer: {type(e).__name__}: {e}")
+
         return False
             
     def error_screen(self, text ):
@@ -196,7 +195,7 @@ class Get:
     def close( self ):
         wdt.feed()
         if not self.buffer:
-            self.error_screen()
+            self.error_screen("No data received")
         self.stop_connection()
         self.display.sleep()
 
