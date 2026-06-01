@@ -4,7 +4,7 @@ import os
 import sys
 import network
 import time
-import urllib.request as urequest
+import urequests
 import base64
 import gc
 import machine
@@ -159,10 +159,9 @@ class Get:
             gc.collect() # clean up space
             wdt.feed()
             try:
-                req = urequest.Request( self.url, headers=self.headers )
-                response = urequest.urlopen( req, timeout=15 )
+                response = urequests.get( self.url, headers=self.headers, timeout=15 )
                 wdt.feed()
-                self.buffer = response.read()
+                self.buffer = response.content
                 wdt.feed()
                 response.close()
 
