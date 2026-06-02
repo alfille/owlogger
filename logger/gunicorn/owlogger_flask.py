@@ -514,8 +514,8 @@ class BitMap:
         nums = re.compile(r"-?\d+\.?\d*|-?\.\d+")
         return [ ( t[0], t[1], list(map(float,nums.findall(t[2]))) ) for t in db.plot_data() ]
 
-class ReverseBitMap(Bitmap):
-        def __init__( self, width=800, height=480 ):
+class ReverseBitMap(BitMap):
+    def __init__( self, width=800, height=480 ):
         self.width = width
         self.height = height
         self.white = 1
