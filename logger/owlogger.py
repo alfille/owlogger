@@ -532,7 +532,7 @@ def _create_image(width=800, height=480):
 @app.route('/ePaper')
 @require_basic_auth
 def frame_buffer():
-    bitmap = BitMap( width, height )
+    bitmap = BitMap( 800, 480 )
     img = bitmap.plot()
     raw_buffer = img.tobytes()
     print(f"Raw Buffer size {len(raw_buffer)}")
