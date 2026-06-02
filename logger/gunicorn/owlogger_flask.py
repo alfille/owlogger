@@ -366,16 +366,20 @@ def serve_static(filename):
 
 class BitMap:
     # send a bitmap to client
-    def __init__( self, width=800, height=400 ):
+    def __init__( self, width=800, height=480 ):
         self.width = width
         self.height = height
-        self.white = 1
-        self.black = 0
-        self.nums = re.compile(r"-?\d+\.?\d*|-?\.\d+")
+        self.white = 0
+        self.black = 1
 
+        self.make_canvas()
+        self.make_letters()
+        
+    def make_canvas( self ):
         self.img = Image.new('1', (self.width, self.height), color=self.white)
         self.draw = ImageDraw.Draw(self.img)
 
+    def make_letters( self ):
         # Try to load a real font; fall back to PIL default
         try:
             self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", size=14)
@@ -383,9 +387,6 @@ class BitMap:
         except (IOError, OSError):
             self.font = ImageFont.load_default()
             self.axisfont = ImageFont.load_default()
-        self.cache_letters()
-        
-    def cache_letters( self ):
         self.caps = [chr(i) for i in range( ord('A'), ord('Z')+1 )]
         self.caps_len = len(self.caps)
         self.bounds = {}
@@ -510,18 +511,29 @@ class BitMap:
             self.draw.text((x, self.Y(self.Y0)-20), t[1], font=self.axisfont, fill=self.black)
 
     def get_data( self ):
-        return [ ( t[0], t[1], list(map(float,self.nums.findall(t[2]))) ) for t in db.plot_data() ]
+        nums = re.compile(r"-?\d+\.?\d*|-?\.\d+")
+        return [ ( t[0], t[1], list(map(float,nums.findall(t[2]))) ) for t in db.plot_data() ]
+
+class ReverseBitMap(Bitmap):
+        def __init__( self, width=800, height=480 ):
+        self.width = width
+        self.height = height
+        self.white = 1
+        self.black = 0
+
+        self.make_canvas()
+        self.make_letters()
 
 def _create_image(width=800, height=480):
     # ── bitmap for monochrome screen ────
     bitmap = BitMap( width, height )
     return bitmap.plot()
 
-
-@app.route('/7in5')
+@app.route('/ePaper')
 @require_basic_auth
 def frame_buffer():
-    img = _create_image(800, 480)
+    bitmap = BitMap( width, height )
+    img = bitmap.plot()
     raw_buffer = img.tobytes()
     print(f"Raw Buffer size {len(raw_buffer)}")
     resp = Response(
@@ -537,7 +549,8 @@ def frame_buffer():
 
 @app.route('/test')
 def frame_png():
-    img = _create_image(800, 480)
+    bitmap = ReverseBitMap( 800, 480 )
+    img = bitmap.plot()
     buf = BytesIO()
     img.save(buf, format='PNG')
     buf.seek(0)
