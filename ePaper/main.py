@@ -89,9 +89,9 @@ class Get:
     def get_server( self ):
         if self.server:
             if self.server[-1] == '/':
-                self.url = f"{self.server}7in5"
+                self.url = f"{self.server}ePaper"
             else:
-                self.url = f"{self.server}/7in5"
+                self.url = f"{self.server}/ePaper"
             print("URL",self.url)
             return True
         else:
