@@ -161,7 +161,7 @@ class Get:
             wdt.feed()
             print(f"Attempting to get buffer {attempt+1}")
             try:
-                response = urequests.get( self.url, headers=self.headers, timeout=15 )
+                response = urequests.get( f"{self.url}?width={self.width}&height={self.height}", headers=self.headers, timeout=15 )
                 wdt.feed()
                 self.buffer = response.content
                 wdt.feed()
