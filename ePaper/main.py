@@ -77,6 +77,7 @@ class Get:
                 self.password = toml.get( "password", None )
                 self.width = toml.get( "width", 800 )
                 self.height = toml.get( "height", 480 )
+                
                 return True
         except Exception as e:
             print(f"Cannot open TOML configuration file: owepaper.toml Error: {e}")
@@ -166,11 +167,11 @@ class Get:
                 wdt.feed()
                 response.close()
 
-                if len(self.buffer) == self.width * self.height:
+                if len(self.buffer) == self.width * self.height // 8:
                     print("Full size buffer!")
                     return True
                 
-                print(f"buffer received size incorrect {len(self.buffer)} not {self.width * self.height}")
+                print(f"buffer received size incorrect {len(self.buffer)} not {self.width * self.height // 8}")
                 print( self.buffer )
                 self.buffer = None
             
