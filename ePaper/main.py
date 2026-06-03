@@ -226,11 +226,7 @@ class EPD_7in5:
         self.cs = Pin(3, Pin.OUT, value=1)
         self.dc = Pin(5, Pin.OUT, value=0)
         self.rst = Pin(2, Pin.OUT, value=1)
-        
-        if self.use_busy:
-            self.busy = Pin(4, Pin.IN)
-        else:
-            self.busy = None
+        self.busy = Pin(4, Pin.IN)
         
         print("Display initialized for remote buffer")
     
@@ -289,9 +285,11 @@ class EPD_7in5:
     
     def _wait_if_busy(self):
         """Wait for display if BUSY pin enabled"""
-        if not self.use_busy or not self.busy:
-            time.sleep_ms(2000)
-            wdt.feed()
+        if not self.use_busy:
+            for b in range(0,60):
+                print("test",n,self.busy)
+                time.sleep_ms(100)
+                wdt.feed()
             return
         
         print("Waiting for display...", end='')
@@ -302,35 +300,48 @@ class EPD_7in5:
             if count % 10 == 0:
                 print(".", end='')
                 wdt.feed()
-            if count >= 400:  # 40 second timeout
+            if count >= 60:  # 40 second timeout
                 print(" TIMEOUT!")
                 return
         print(" Ready!")
     
-    def show_buffer(self, buf):
-        print("Sending buffer to display...")
-        
-        # Send old image (white)
-        print("  Clearing old image...")
+    def _clear( self, byte ):
         self._command(self.DATA_START_TRANSMISSION_1)
         line = self.width // 8
-        white_line = bytearray([0xFF] * line ) # self.WIDTH // 8
+        white_line = bytearray([byte] * line ) # self.WIDTH // 8
         for n in range(self.height):
             self._data_send(white_line)
             if n % 50 == 49:
                 wdt.feed()
+        
+
+    def show_buffer(self, buf):
+        print("Sending buffer to display...")
+        
+        w_byte = 0xFF
+        b_byte = 0x00
+        
+        self._clear( b_byte )
+        self._command(self.DISPLAY_REFRESH)
+        self._wait_if_busy()
+
+        self._clear( w_byte )
+        self._command(self.DISPLAY_REFRESH)
+        self._wait_if_busy()
+
+        self._clear( w_byte )
         
         # Send new image
         print("  Transferring image buffer...")
         self._command(self.DATA_START_TRANSMISSION_2)
         
         # Send in chunks to avoid memory issues
-        chunk_size = 1024  # 1KB chunks
-        for i in range(0, len(buf), chunk_size):
-            chunk = buf[i:i+chunk_size]
-            self._data_send(chunk)
+        line = self.width // 8
+        length = line * self.height
+        for n in range(0, length, line):
+            self._data_send(buf[n:n+line])
             # Yield to avoid watchdog timeout
-            if i % 10240 == 0:  # Every ~10 chunks
+            if n % 29 == 0:  # Every ~29 lines
                 time.sleep_ms(1)
                 wdt.feed()
         
