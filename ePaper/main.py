@@ -212,9 +212,8 @@ class EPD_7in5:
     COUNTER_X_SET = 0x4E
     COUNTER_Y_SET = 0x4F
     
-    def __init__(self, width=800, height=480, use_busy=False):
+    def __init__(self, width=800, height=480):
         """Initialize display for remote buffer display"""
-        self.use_busy = use_busy
         self.width = width
         self.height = height
         
@@ -285,25 +284,14 @@ class EPD_7in5:
     
     def _wait_if_busy(self):
         """Wait for display if BUSY pin enabled"""
-        if not self.use_busy:
-            for b in range(0,60):
-                print("test",b,self.busy.value())
-                time.sleep_ms(100)
-                wdt.feed()
-            return
-        
-        print("Waiting for display...", end='')
         count = 0
-        while self.busy.value() == 1:
-            time.sleep_ms(100)
-            count += 1
-            if count % 10 == 0:
-                print(".", end='')
+        while self.busy.value() == 0:
+            time.sleep_ms(500)
+            count += 500
+            if count % 1000 == 0:
                 wdt.feed()
-            if count >= 60:  # 40 second timeout
-                print(" TIMEOUT!")
-                return
-        print(" Ready!")
+            if count >= 5000:  # 40 second timeout
+                wdt.feed()
     
     def _clear( self, byte ):
         self._command(self.DATA_START_TRANSMISSION_1)
