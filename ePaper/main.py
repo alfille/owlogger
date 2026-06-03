@@ -287,7 +287,7 @@ class EPD_7in5:
         """Wait for display if BUSY pin enabled"""
         if not self.use_busy:
             for b in range(0,60):
-                print("test",n,self.busy)
+                print("test",b,self.busy.value())
                 time.sleep_ms(100)
                 wdt.feed()
             return
