@@ -246,7 +246,7 @@ class EPD_7in5:
         self._data_send([0x07, 0x07, 0x3f, 0x3f])
         
         self._command( self.BOOSTER_SOFT )
-        self._data_send([0x17, 0x17, 0x17])
+        self._data_send([0x17, 0x17, 0x28, 0x17])
         
         self._command(self.POWER_ON) # Power ON
         self._wait_if_busy()
@@ -292,7 +292,12 @@ class EPD_7in5:
                 wdt.feed()
             if count >= 5000:  # 40 second timeout
                 wdt.feed()
-    
+                
+    def _display_refresh(self):
+        time.sleep_ms(10)
+        self._command(self.DISPLAY_REFRESH)
+        self._wait_if_busy()
+            
     def _clear( self, byte ):
         self._command(self.DATA_START_TRANSMISSION_1)
         line = self.width // 8
@@ -310,12 +315,10 @@ class EPD_7in5:
         b_byte = 0x00
         
         self._clear( b_byte )
-        self._command(self.DISPLAY_REFRESH)
-        self._wait_if_busy()
+        self._display_refresh()
 
         self._clear( w_byte )
-        self._command(self.DISPLAY_REFRESH)
-        self._wait_if_busy()
+        self._display_refresh()
 
         self._clear( w_byte )
         
@@ -335,8 +338,7 @@ class EPD_7in5:
         
         # Trigger refresh
         print("  Refreshing display...")
-        self._command(self.DISPLAY_REFRESH)
-        self._wait_if_busy()
+        self._display_refresh()
         
         print("Display updated!")
         return True
