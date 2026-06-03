@@ -344,8 +344,10 @@ class EPD_7in5:
         return True
 
     def deep_sleep(self):
+        print("Prepare to power down the screen")
         self._command(self.POWER_OFF) # Power Off
         self._wait_if_busy()
+        print("Screen sleep")        
         self._command(self.DEEP_SLEEP) # Deep Sleep
         self._data_send([0xA5])
 
@@ -361,9 +363,11 @@ def main(sysargs):
 
     try:
         retriever = Get()
+        print("Primary deepsleep")
         machine.deepsleep( retriever.get_period()*60*1000 ) # 2 minutes
     except KeyboardInterrupt:
-        machine.deepsleep( 60*1000 ) # 1 minute
+        print("Backup deepsleep")
+        machine.deepsleep( 5*60*1000 ) # 5 minute
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
