@@ -431,11 +431,16 @@ class BitMap:
         return self.img
 
     def y_limits( self, data ):
-        y = [t[2] for t in data]
+        ys = [t[2] for t in data]
 
         # Math.round() rounds to the nearest integer.
-        self.Y1 = round(max(map(max,y),default=1) + 1)
-        self.Y0 = round(min(map(min,y),default=0) - 2)
+        min_y = 0
+        max_y = 1
+        for y in ys:
+            min_y = min( min_y, min(y, default = 0 ))
+            max_y = max( min_y, max(y, default = 1 ))
+        self.Y1 = round(max_y + 1)
+        self.Y0 = round(min_y - 2)
         
         self.Ymajor = 1.0
         
