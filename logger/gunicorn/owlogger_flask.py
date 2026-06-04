@@ -383,11 +383,16 @@ class BitMap:
         # Try to load a real font; fall back to PIL default
         try:
             self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", size=14)
-            self.keyfont = ImageFont.truetype("/usr/share/fonts/truetype/roboto-condensed/Roboto-Condensed-Bold.ttf", size=14)
-            self.axisfont = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", size=20)
         except (IOError, OSError):
             self.font = ImageFont.load_default()
-            self.axisfont = ImageFont.load_default()
+        try:
+            self.axisfont = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", size=20)
+        except (IOError, OSError):
+            self.axisfont = self.font
+        try:
+            self.keyfont = ImageFont.truetype("/usr/share/fonts/truetype/roboto-condensed/Roboto-Condensed-Bold.ttf", size=14)
+        except (IOError, OSError):
+            self.keyfont = self.font
         self.caps = [chr(i) for i in range( ord('A'), ord('Z')+1 )]
         self.caps_len = len(self.caps)
         self.bounds = {}
