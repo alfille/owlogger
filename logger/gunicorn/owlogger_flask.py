@@ -383,6 +383,7 @@ class BitMap:
         # Try to load a real font; fall back to PIL default
         try:
             self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", size=14)
+            self.keyfont = ImageFont.truetype("/usr/share/fonts/truetype/roboto-condensed/Roboto-Condensed-Bold.ttf", size=14)
             self.axisfont = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", size=20)
         except (IOError, OSError):
             self.font = ImageFont.load_default()
@@ -408,13 +409,14 @@ class BitMap:
                 self.sense[k] = self.caps[i]
             else:
                 self.sense[k] = '#'
+        self.sensors = " ".join([f"{self.sense[k]} {k}" for k in sense_list])
     
     def X( self, time ):
         # Data in last 24 hours (-24 to 0)
         return (time + 24) * self.width / 24
         
     def Y( self, temp ):
-        return ( self.Y1 - temp ) * self.height / ( self.Y1 - self.Y0 )
+        return ( self.Y1 - temp ) * (self.height-20) / ( self.Y1 - self.Y0 ) + 20
         
     def plot( self ):
         data = self.get_data()
@@ -424,6 +426,7 @@ class BitMap:
         self.X1 = 0
         self.horz()
         self.vert()
+        self.legend()
         for d in data:
             a = self.sense[d[1]]
             for y in d[2]:
@@ -493,6 +496,9 @@ class BitMap:
                     x += random.randrange(8,11)
 
             temp += self.Yminor
+            
+    def legend( self ):
+        k = self.draw.text((0,0),self.sensors, font=self.keyfont, fill=self.black)
 
     def vert(self):
         now = db.now_time()
