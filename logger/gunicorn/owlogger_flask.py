@@ -434,7 +434,7 @@ class BitMap:
         # Math.round() rounds to the nearest integer.
         for y_find in ys: # find any data
             if len(y_find) > 0:
-                y_def - y_find[0]
+                y_def = y_find[0]
                 min_y = y_def
                 max_y = y_def
                 for y in ys:
