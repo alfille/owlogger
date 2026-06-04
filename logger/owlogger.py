@@ -430,12 +430,26 @@ class BitMap:
                 self.point( self.X(d[0]),self.Y(y),a)
         return self.img
 
-    def y_limits( self, data ):
-        y = [t[2] for t in data]
-
+    def y_minmax( self, ys ):
         # Math.round() rounds to the nearest integer.
-        self.Y1 = round(max(map(max,y),default=1) + 1)
-        self.Y0 = round(min(map(min,y),default=0) - 2)
+        for y_find in ys: # find any data
+            if len(y_find) > 0:
+                y_def = y_find[0]
+                min_y = y_def
+                max_y = y_def
+                for y in ys:
+                    min_y = min( min_y, min(y, default = y_def ))
+                    max_y = max( max_y, max(y, default = y_def ))
+                self.Y1 = round(max_y + 1)
+                self.Y0 = round(min_y - 2)
+                return
+        # No data, arbitrary scale
+        self.Y1 = 2
+        self.Y0 = 0
+
+    def y_limits( self, data ):
+        # Set Y1, Y0
+        self.y_minmax( [t[2] for t in data] )
         
         self.Ymajor = 1.0
         
@@ -460,7 +474,7 @@ class BitMap:
     def horz(self):
         # --- Minor Grid ---
         temp = self.Y0
-        print(self.X0,self.X1,self.Y0,self.Y1,self.Ymajor,self.Yminor)
+        # print(self.X0,self.X1,self.Y0,self.Y1,self.Ymajor,self.Yminor)
         while temp <= self.Y1:
             # Define line coordinates using your coordinate mapping methods self.X() and self.Y()
             x_start = self.X(self.X0)
