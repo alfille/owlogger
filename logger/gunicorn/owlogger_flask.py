@@ -532,8 +532,8 @@ def _create_image(width=800, height=480):
 @app.route('/ePaper')
 @require_basic_auth
 def frame_buffer():
-	width  = request.args.get[ 'width',  800 )
-	height = request.args.get( 'height', 480 )
+    width  = request.args.get( 'width',  800, type=int )
+    height = request.args.get( 'height', 480, type=int )
     bitmap = BitMap( width, height )
     img = bitmap.plot()
     raw_buffer = img.tobytes()
@@ -551,8 +551,8 @@ def frame_buffer():
 
 @app.route('/test')
 def frame_png():
-	width  = request.args.get[ 'width',  800 )
-	height = request.args.get( 'height', 480 )
+    width  = request.args.get( 'width',  800, type=int )
+    height = request.args.get( 'height', 480, type=int )
     bitmap = ReverseBitMap( width, height )
     img = bitmap.plot()
     buf = BytesIO()
