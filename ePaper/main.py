@@ -285,13 +285,15 @@ class EPD_7in5:
     def _wait_if_busy(self):
         """Wait for display if BUSY pin enabled"""
         count = 0
+        print(f"{count}. BUSY={self.busy.value()}")
         while self.busy.value() == 0:
             time.sleep_ms(500)
             count += 500
+            print(f"{count}. BUSY={self.busy.value()}")
             if count % 1000 == 0:
                 wdt.feed()
-            if count >= 5000:  # 40 second timeout
-                wdt.feed()
+            if count >= 5000:  # 5 second timeout
+                return
                 
     def _display_refresh(self):
         time.sleep_ms(10)
