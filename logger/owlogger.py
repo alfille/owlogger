@@ -366,11 +366,13 @@ def serve_static(filename):
 
 class BitMap:
     # send a bitmap to client
-    def __init__( self, width=800, height=480 ):
+    def __init__( self, width=800, height=480, black=1, white=0 ):
         self.width = width
         self.height = height
-        self.white = 0
-        self.black = 1
+        self.top_pad = 20
+        self.bottom_pad = 20
+        self.white = white
+        self.black = black
 
         self.make_canvas()
         self.make_letters()
@@ -421,7 +423,8 @@ class BitMap:
         return (time + 24) * self.width / 24
         
     def Y( self, temp ):
-        return ( self.Y1 - temp ) * (self.height-20) / ( self.Y1 - self.Y0 ) + 20
+        # Y starts counting from top
+        return ( self.Y1 - temp ) * (self.height-self.top_pad-self.bottom_pad) / ( self.Y1 - self.Y0 ) + self.top_pad
         
     def plot( self ):
         data = self.get_data()
@@ -449,7 +452,7 @@ class BitMap:
                     min_y = min( min_y, min(y, default = y_def ))
                     max_y = max( max_y, max(y, default = y_def ))
                 self.Y1 = round(max_y + 1)
-                self.Y0 = round(min_y - 2)
+                self.Y0 = round(min_y - 1)
                 return
         # No data, arbitrary scale
         self.Y1 = 2
@@ -480,7 +483,7 @@ class BitMap:
         self.Y0 = math.floor(self.Y0 / self.Yminor) * self.Yminor
 
     def horz(self):
-        # --- Minor Grid ---
+        # horizontal lines, Y axis
         temp = self.Y0
         # print(self.X0,self.X1,self.Y0,self.Y1,self.Ymajor,self.Yminor)
         while temp <= self.Y1:
@@ -506,6 +509,7 @@ class BitMap:
         k = self.draw.text((0,0),self.sensors, font=self.keyfont, fill=self.black)
 
     def vert(self):
+        # vertival lines, Y axis markings
         now = db.now_time()
         marks = [
             ( 0., "N"),
@@ -533,33 +537,26 @@ class BitMap:
             y_start = self.Y(self.Y0)
             y_end = self.Y(self.Y1)
             self.draw.line([(x, y_start), (x, y_end)], fill=self.black, width=1)
-            self.draw.text((x, self.Y(self.Y0)-20), t[1], font=self.axisfont, fill=self.black)
+            self.draw.text((x, self.height-self.bottom_pad), t[1], font=self.axisfont, fill=self.black)
 
     def get_data( self ):
         nums = re.compile(r"-?\d+\.?\d*|-?\.\d+")
         return [ ( t[0], t[1], list(map(float,nums.findall(t[2]))) ) for t in db.plot_data() ]
 
-class ReverseBitMap(BitMap):
+class BrowserBitMap(BitMap):
     def __init__( self, width=800, height=480 ):
-        self.width = width
-        self.height = height
-        self.white = 1
-        self.black = 0
+        super().__init__( width=width, height=height, black=0, white=1 )
 
-        self.make_canvas()
-        self.make_letters()
-
-def _create_image(width=800, height=480):
-    # ── bitmap for monochrome screen ────
-    bitmap = BitMap( width, height )
-    return bitmap.plot()
+class EPaperBitMap(BitMap):
+    def __init__( self, width=800, height=480 ):
+        super().__init__( width=width, height=height, black=1, white=0 )
 
 @app.route('/ePaper')
 @require_basic_auth
 def frame_buffer():
     width  = request.args.get( 'width',  800, type=int )
     height = request.args.get( 'height', 480, type=int )
-    bitmap = BitMap( width, height )
+    bitmap = EPaperBitMap( width, height )
     img = bitmap.plot()
     raw_buffer = img.tobytes()
     print(f"Raw Buffer size {len(raw_buffer)}")
@@ -578,7 +575,7 @@ def frame_buffer():
 def frame_png():
     width  = request.args.get( 'width',  800, type=int )
     height = request.args.get( 'height', 480, type=int )
-    bitmap = ReverseBitMap( width, height )
+    bitmap = BrowserBitMap( width, height )
     img = bitmap.plot()
     buf = BytesIO()
     img.save(buf, format='PNG')

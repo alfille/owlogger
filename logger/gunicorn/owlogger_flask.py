@@ -452,7 +452,7 @@ class BitMap:
                     min_y = min( min_y, min(y, default = y_def ))
                     max_y = max( max_y, max(y, default = y_def ))
                 self.Y1 = round(max_y + 1)
-                self.Y0 = round(min_y - 2)
+                self.Y0 = round(min_y - 1)
                 return
         # No data, arbitrary scale
         self.Y1 = 2
