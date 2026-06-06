@@ -65,18 +65,17 @@ class Get:
         print("Screen!")
         
     def get_toml( self ):
-        self.period = 15
         try:
             with open( "owepaper.toml", "rb" ) as c:
                 toml = tomli.load(c)
                 print("configuration",toml)
-                self.period = toml.get("period", self.period )
+                self.period = toml.get("period", 15 ) # default 15 minutes
                 self.server = toml.get("server", None )
                 self.wifi = toml.get("wifi", None )
                 self.username = toml.get( "username", None )
                 self.password = toml.get( "password", None )
-                self.width = toml.get( "width", 800 )
-                self.height = toml.get( "height", 480 )
+                self.width = toml.get( "width", 800 ) # default 800x480 screen
+                self.height = toml.get( "height", 480 ) #
                 
                 return True
         except Exception as e:
@@ -192,7 +191,7 @@ class Get:
 
 # Display controller commands
 class EPD_7in5:
-    # Commands
+    # Commands to Seedstudio ePaper controller, equivalent to UltraChip UC8179
     DATA_START_TRANSMISSION_1 = 0x10
     DATA_START_TRANSMISSION_2 = 0x13
     DISPLAY_REFRESH = 0x12
@@ -242,11 +241,11 @@ class EPD_7in5:
         self._reset()
         self._wait_if_busy()
         
+        self._command( self.BOOSTER_SOFT )
+        self._data_send([0x17, 0x17, 0x1E, 0x17])
+        
         self._command(self.POWER_SET) # Power Setting
         self._data_send([0x07, 0x07, 0x3f, 0x3f])
-        
-        self._command( self.BOOSTER_SOFT )
-        self._data_send([0x17, 0x17, 0x28, 0x17])
         
         self._command(self.POWER_ON) # Power ON
         self._wait_if_busy()
@@ -255,18 +254,17 @@ class EPD_7in5:
         self._data_send([0x1F])    # KW-BF, KWR-AF, BWROTP
         
         self._command(self.RESOLUTION_SET) # Resolution setting
-#        self._data_send([0x03, 0x20, 0x01, 0xE0]) # 800x480
         self._data_send(list(self.width.to_bytes(2,'big')))
         self._data_send(list(self.height.to_bytes(2,'big')))
         
-        self._command(self.DUAL_SPI) # Dual SPI mode
-        self._data_send([0x00])
+        #self._command(self.DUAL_SPI) # Dual SPI mode
+        #self._data_send([0x00])
         
         self._command(self.VCOM_AND_DATA) # VCOM and Data Interval
-        self._data_send([0x10, 0x07])
+        self._data_send([0x10, 0x14])
         
-        self._command(self.TCON_SET) # TCON setting
-        self._data_send([0x22])
+        #self._command(self.TCON_SET) # TCON setting
+        #self._data_send([0x22])
 
     def _command(self, command):
         """Send command to display"""
@@ -285,15 +283,14 @@ class EPD_7in5:
     def _wait_if_busy(self):
         """Wait for display if BUSY pin enabled"""
         count = 0
-        print(f"{count}. BUSY={self.busy.value()}")
+        #print(f"{count}. BUSY={self.busy.value()}")
         while self.busy.value() == 0:
-            time.sleep_ms(500)
-            count += 500
-            print(f"{count}. BUSY={self.busy.value()}")
-            if count % 1000 == 0:
-                wdt.feed()
-            if count >= 5000:  # 5 second timeout
-                return
+            time.sleep_ms(100)
+            count += 100
+            #print(f"{count}. BUSY={self.busy.value()}")
+            wdt.feed()
+            if count >= 5000:  # 5 second timeout limit
+                break
                 
     def _display_refresh(self):
         time.sleep_ms(10)
