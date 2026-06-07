@@ -280,6 +280,13 @@ class EPD_7in5:
         self.spi.write(bytearray(data))
         self.cs.value(1)
     
+    def _mv_send(self, data):
+        """Send memoryview chunk to display"""
+        self.dc.value(1)
+        self.cs.value(0)
+        self.spi.write(data)
+        self.cs.value(1)
+    
     def _wait_if_busy(self):
         """Wait for display if BUSY pin enabled"""
         count = 0
@@ -289,7 +296,7 @@ class EPD_7in5:
             count += 100
             #print(f"{count}. BUSY={self.busy.value()}")
             wdt.feed()
-            if count >= 5000:  # 5 second timeout limit
+            if count >= 12000:  # 12 second timeout limit
                 break
                 
     def _display_refresh(self):
@@ -301,10 +308,9 @@ class EPD_7in5:
         self._command(self.DATA_START_TRANSMISSION_1)
         line = self.width // 8
         white_line = bytearray([byte] * line ) # self.WIDTH // 8
-        for n in range(self.height):
+        for _ in range(self.height):
             self._data_send(white_line)
-            if n % 50 == 49:
-                wdt.feed()
+            wdt.feed()
         
 
     def show_buffer(self, screen_buf):
@@ -325,11 +331,9 @@ class EPD_7in5:
         line = self.width // 8
         length = line * self.height
         for n in range(0, length, line):
-            self._data_send(buf[n:n+line])
+            self._mv_send(buf[n:n+line])
             # Yield to avoid watchdog timeout
-            if n % 29 == 0:  # Every ~29 lines
-                time.sleep_ms(1)
-                wdt.feed()
+            wdt.feed()
         
         # Trigger refresh
         print("  Refreshing display...")
@@ -341,7 +345,6 @@ class EPD_7in5:
     def deep_sleep(self):
         print("Prepare to power down the screen")
         self._command(self.POWER_OFF) # Power Off
-        self._wait_if_busy()
         self._wait_if_busy()
         print("Screen sleep")        
         self._command(self.DEEP_SLEEP) # Deep Sleep
@@ -363,7 +366,7 @@ def main(sysargs):
         machine.deepsleep( retriever.get_period()*60*1000 ) # 2 minutes
     except KeyboardInterrupt:
         print("Backup deepsleep")
-        machine.deepsleep( 5*60*1000 ) # 5 minute
+        machine.deepsleep( 15*60*1000 ) # 15 minute
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
