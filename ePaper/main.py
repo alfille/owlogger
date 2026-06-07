@@ -307,23 +307,19 @@ class EPD_7in5:
                 wdt.feed()
         
 
-    def show_buffer(self, buf):
+    def show_buffer(self, screen_buf):
         print("Sending buffer to display...")
+        
+        buf = memoryview(screen_buf)
         
         w_byte = 0xFF
         b_byte = 0x00
         
-        self._clear( b_byte )
-        self._display_refresh()
-
         self._clear( w_byte )
-        self._display_refresh()
 
-        self._clear( w_byte )
-        
         # Send new image
         print("  Transferring image buffer...")
-        self._command(self.DATA_START_TRANSMISSION_2)
+        self._command(self.DATA_START_TRANSMISSION_1)
         
         # Send in chunks to avoid memory issues
         line = self.width // 8
@@ -345,6 +341,7 @@ class EPD_7in5:
     def deep_sleep(self):
         print("Prepare to power down the screen")
         self._command(self.POWER_OFF) # Power Off
+        self._wait_if_busy()
         self._wait_if_busy()
         print("Screen sleep")        
         self._command(self.DEEP_SLEEP) # Deep Sleep
