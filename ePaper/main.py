@@ -321,11 +321,19 @@ class EPD_7in5:
         w_byte = 0xFF
         b_byte = 0x00
         
-        self._clear( w_byte )
+        # Full clear cycle to eliminate ghosting
+        self._clear(0x00)          # black to old frame
+        self._display_refresh()
+
+        self._clear(0xFF)          # white to old frame  
+        self._display_refresh()
+
+        # Load white into old frame (DTM1)
+        self._clear(0xFF)
 
         # Send new image
         print("  Transferring image buffer...")
-        self._command(self.DATA_START_TRANSMISSION_1)
+        self._command(self.DATA_START_TRANSMISSION_2)
         
         # Send in chunks to avoid memory issues
         line = self.width // 8
