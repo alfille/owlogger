@@ -197,6 +197,7 @@ class Stat extends Data {
     }
 }
 class Plot {
+    type = 'plot';
     constructor() {
         const div = document.getElementById("contentarea") ;
         this.canvas = document.getElementById("graphcanvas");
@@ -208,6 +209,7 @@ class Plot {
         
         this.ctx = this.canvas.getContext('2d');
         this.jump() ;
+        console.log(self.type);
         this.colors=[
           "Navy", "DarkOrange", "Green", "DeepPink", "Black", 
           "Goldenrod", "Purple", "SaddleBrown", "RoyalBlue", "Crimson", 
@@ -227,7 +229,7 @@ class Plot {
         this.data();
         this.legend();
         this.filter();
-        this.setup();
+        this.make_grid();
         this.plot();
     }
     
@@ -261,7 +263,7 @@ class Plot {
                     this.select[key]=true;
                 }
                 this.filter();
-                this.setup();
+                this.make_grid();
                 this.plot();
             };
             legend.appendChild(bu);
@@ -348,16 +350,19 @@ class Plot {
             }
         }
     }
-    setup() {
+    grid_base() {
         this.ctx.fillStyle = "white" ;
         this.ctx.fillRect(0,0,this.width,this.height) ;
         this.ctx.strokeStyle = "lightgray" ;
         
+        this.horz() ;
+    }
+    make_grid() {
+        this.grid_base() ;
+
         this.vert( 1, 1 ) ;
         this.vert( 2, 2 ) ;
         this.vert( 4, 4 ) ;
-        
-        this.horz() ;
                 
         this.ctx.font = `${this.scaleX}px san-serif` ;
         this.ctx.fillStyle = "gray" ;
@@ -390,6 +395,7 @@ class Plot {
     }
 }
 class Week extends Plot {
+    type = 'plot';
     jump() {
         if ( 'orientation' in screen ) {
             screen.orientation.addEventListener('change', () => JumpTo.type('week') );
@@ -414,25 +420,27 @@ class Week extends Plot {
             numbers.forEach( n => this.Ys[key].push([time,n]));
         });
     }
-    setup() {
-        this.ctx.fillStyle = "white" ;
-        this.ctx.fillRect(0,0,this.width,this.height) ;
-        this.ctx.strokeStyle = "lightgray" ;
+    make_grid() {
+        this.grid_base() ;
         
         this.vert( .25, 1 ) ;
         this.vert( .5, 2 ) ;
         this.vert( 1, 4 ) ;
         
-        this.horz() ;
-        
-        this.ctx.font = `${this.scaleX}px san-serif` ;
+        this.ctx.font = `${this.scaleX/5}px san-serif` ;
         this.ctx.fillStyle = "gray" ;
+        //~ for ( let time = this.X0; time <= this.X1 ; time += 1 ) {
+            //~ this.ctx.fillText(Number(time).toFixed(0),this.X(time),this.Y(this.Y0)+0.5);
+        //~ }
         for ( let time = this.X0; time <= this.X1 ; time += 1 ) {
-            this.ctx.fillText(Number(time).toFixed(0),this.X(time),this.Y(this.Y0)+0.5);
+            let date = new Date(globals.daystart);
+            date.setDate(date.getDate()-(this.X1-time));
+            this.ctx.fillText(date.toLocaleDateString('en-US', {month: 'short', day: 'numeric'}),this.X(time),this.Y(this.Y0)+0.5);
         }
     }
 }
 class Month extends Week {
+    type = 'plot';
     jump() {
         if ( 'orientation' in screen ) {
             screen.orientation.addEventListener('change', () => JumpTo.type('month') );
@@ -443,22 +451,18 @@ class Month extends Week {
         this.X1 = 31;
         this.scaleX = (this.width-2*this.padX)/(this.X1-this.X0) ;
     }
-    setup() {
-        this.ctx.fillStyle = "white" ;
-        this.ctx.fillRect(0,0,this.width,this.height) ;
-        this.ctx.strokeStyle = "lightgray" ;
-        
+    make_grid() {
+        this.grid_base() ;
+
         this.vert( .5, 1 ) ;
         this.vert( 1, 2 ) ;
         this.vert( 7, 4 ) ;
-        
-        this.horz() ;
                 
         this.ctx.font = `${this.scaleX}px san-serif` ;
         this.ctx.fillStyle = "gray" ;
         for ( let time = this.X0; time <= this.X1 ; time += 7 ) {
             let date = new Date(globals.daystart);
-            date.setDate(date.getDate()+(time-this.X0));
+            date.setDate(date.getDate()-(this.X1-time));
             this.ctx.fillText(date.toLocaleDateString('en-US', {month: 'short', day: 'numeric'}),this.X(time),this.Y(this.Y0)+0.5);
         }
     }
