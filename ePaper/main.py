@@ -151,7 +151,8 @@ class Get:
         if self.wlan:
             if self.wlan.isconnected():
                 self.wlan.disconnect()
-                print("WiFi disconnected")
+            self.wlan.active(False)
+            print("WiFi disconnected")
 
     def get_buffer( self ):
         for attempt in range(0,4):
@@ -308,10 +309,10 @@ class EPD_7in5:
         self._command(self.DATA_START_TRANSMISSION_1)
         line = self.width // 8
         white_line = bytearray([byte] * line ) # self.WIDTH // 8
+        mv_white = memoryview(white_line)
         for _ in range(self.height):
-            self._data_send(white_line)
-            wdt.feed()
-        
+            self._mv_send(mv_white)
+            wdt.feed()        
 
     def show_buffer(self, screen_buf):
         print("Sending buffer to display...")
@@ -344,9 +345,14 @@ class EPD_7in5:
         return True
 
     def deep_sleep(self):
+        # Float the VCOM and data lines to safely discharge residual voltage caps
+        self._command(self.VCOM_AND_DATA) # 0x50
+        self._data_send([0xF7]) # Floats source pins and VCOM internally
+        
         print("Prepare to power down the screen")
         self._command(self.POWER_OFF) # Power Off
         self._wait_if_busy()
+
         print("Screen sleep")        
         self._command(self.DEEP_SLEEP) # Deep Sleep
         self._data_send([0xA5])
