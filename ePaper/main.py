@@ -243,7 +243,7 @@ class EPD_7in5:
         self._wait_if_busy()
         
         self._command( self.BOOSTER_SOFT )
-        self._data_send([0x17, 0x17, 0x1E, 0x17])
+        self._data_send([0x27, 0x27, 0x2F, 0x17])
         
         self._command(self.POWER_SET) # Power Setting
         self._data_send([0x07, 0x07, 0x3f, 0x3f])
@@ -262,7 +262,7 @@ class EPD_7in5:
         #self._data_send([0x00])
         
         self._command(self.VCOM_AND_DATA) # VCOM and Data Interval
-        self._data_send([0x18, 0x14])
+        self._data_send([0x1C, 0x14])
         
         #self._command(self.TCON_SET) # TCON setting
         #self._data_send([0x22])
