@@ -262,7 +262,7 @@ class EPD_7in5:
         #self._data_send([0x00])
         
         self._command(self.VCOM_AND_DATA) # VCOM and Data Interval
-        self._data_send([0x10, 0x14])
+        self._data_send([0x18, 0x14])
         
         #self._command(self.TCON_SET) # TCON setting
         #self._data_send([0x22])
