@@ -1,6 +1,5 @@
 # ESP32-C3 owlogger display
 
-import os
 import sys
 import network
 import time
@@ -188,7 +187,8 @@ class Get:
         if not self.buffer:
             self.error_screen("No data received")
         self.stop_connection()
-        self.display.deep_sleep()
+        if hasattr(self, 'display'):
+            self.display.deep_sleep()
 
 # Display controller commands
 class EPD_7in5:
@@ -323,7 +323,7 @@ class EPD_7in5:
         b_byte = 0x00
         
         # Load white into old frame (DTM1)
-        self._clear(0xFF)
+        self._clear(w_byte)
 
         # Send new image
         print("  Transferring image buffer...")
