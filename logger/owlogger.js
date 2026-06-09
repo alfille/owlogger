@@ -5,6 +5,14 @@
 
 /* jshint esversion: 11 */
 
+// Shared utility to pull numeric sets from string data rapidly
+// Thanks to Gemini
+const parseTelemetryNumbers = (str) => {
+    if (!str) return [];
+    const matches = str.match(/-?(\d+\.?\d*|\.?\d+)/g);
+    return matches ? matches.map(parseFloat) : [];
+};
+
 class Cumulative {
     constructor( name ) {
         this.lines = 0;
@@ -31,25 +39,25 @@ class Cumulative {
             }
         });
     }
-    Max() {
+    get Max() {
         return this.max ;
     }
-    Min() {
+    get Min() {
         return this.min ;
     }
-    Lines() {
+    get Lines() {
         return this.lines ;
     }
-    N() {
+    get N() {
         return this.n;
     }
-    Avg() {
+    get Avg() {
         return this.A ;
     }
-    Std() {
+    get Std() {
         return Math.sqrt( this.Q/this.n ) ;
     }
-    Name() {
+    get Name() {
         return this.name ;
     }
 }
@@ -60,7 +68,7 @@ class StatCalc {
         data.forEach( dline => this.addline(dline) );
     }
     addline( dline ) {
-        const numbers = ((dline[2].match(/-?(\d+\.?\d*|\.?\d+)/g))??[]).map(Number) ;
+        const numbers = parseTelemetryNumbers(dline[2]) ;
         this.all.add(numbers);
         const key = dline[1] ;
         if ( !(key in this.list) ) {
@@ -163,20 +171,29 @@ class Data {
         };
         this.thead.innerHTML="";
         this.tbody.innerHTML="";
-        const sortorder = JSON.parse(sessionStorage.getItem("sortorder"));
-        ["Time","Source","Data"].forEach( (h,i) => {
-            const t = this.thead.insertCell(-1) ;
-            t.innerHTML=`<B>${h}&nbsp;${sym(i,sortorder[0],sortorder[1])}</B>`;
-            t.onclick=()=>{
+        const [sortCol, sortDir] = JSON.parse(sessionStorage.getItem("sortorder")) || [0, 1];
+
+        ["Time", "Source", "Data"].forEach((h, i) => {
+            const t = this.thead.insertCell(-1);
+            t.innerHTML = `<B>${h}&nbsp;${sym(i, sortCol, sortDir)}</B>`;
+            t.onclick = () => {
                 this.SortOn(i);
                 this.ShowDataTable();
             };
         });
-        globals.dayData.forEach( r => this.ShowRow( r ) );
-    }
-    ShowRow( row_data ) {
-        const row = this.tbody.insertRow(-1);
-        row_data.forEach( d => row.insertCell(-1).innerHTML=d );
+        
+        // Use a document fragment to perform single layout-pass rendering
+        const fragment = document.createDocumentFragment();
+        globals.dayData.forEach(r => {
+            const row = document.createElement("tr");
+            r.forEach(d => {
+                const cell = document.createElement("td");
+                cell.innerHTML = d;
+                row.appendChild(cell);
+            });
+            fragment.appendChild(row);
+        });
+        this.tbody.appendChild(fragment);
     }
 }
 class Stat extends Data {
@@ -191,25 +208,25 @@ class Stat extends Data {
         this.ShowStat( this.statData.All() );
     }                  
     ShowStat( stat ) {
-        this.ShowRow( [`<B>${stat.Name()}</B>`, "Lines, Readings", `${stat.Lines()}, ${stat.N()}`]);
-        this.ShowRow( ["", "Avg (Std)", (stat.N()==0)?"":`${stat.Avg().toFixed(2)} (${stat.Std().toFixed(2)})`]);
-        this.ShowRow( ["", "Range", (stat.N()==0)?"":`${stat.Min()} &mdash; ${stat.Max()}`]);
+        this.ShowRow( [`<B>${stat.Name}</B>`, "Lines, Readings", `${stat.Lines}, ${stat.N}`]);
+        this.ShowRow( ["", "Avg (Std)", (stat.N==0)?"":`${stat.Avg.toFixed(2)} (${stat.Std.toFixed(2)})`]);
+        this.ShowRow( ["", "Range", (stat.N==0)?"":`${stat.Min} &mdash; ${stat.Max}`]);
+    }
+    ShowRow( row_data ) {
+        const row = this.tbody.insertRow(-1);
+        row_data.forEach( d => row.insertCell(-1).innerHTML=d );
     }
 }
 class Plot {
-    type = 'plot';
     constructor() {
         const div = document.getElementById("contentarea") ;
         this.canvas = document.getElementById("graphcanvas");
 
-        this.canvas.width = div.clientWidth ;
-        this.width = this.canvas.width ;
-        this.canvas.height = div.clientHeight ;
-        this.height = this.canvas.height ;
+        this.width = this.canvas.width = div.clientWidth ;
+        this.height = this.canvas.height = div.clientHeight ;
         
         this.ctx = this.canvas.getContext('2d');
-        this.jump() ;
-        console.log(self.type);
+
         this.colors=[
           "Navy", "DarkOrange", "Green", "DeepPink", "Black", 
           "Goldenrod", "Purple", "SaddleBrown", "RoyalBlue", "Crimson", 
@@ -219,11 +236,6 @@ class Plot {
           "Sienna", "Teal", "IndianRed", "DarkGreen", "Red"
         ];
         this.color_len = this.colors.length;
-    }
-    jump() {
-        if ( 'orientation' in screen ) {
-            screen.orientation.addEventListener('change', () => JumpTo.type('plot') );
-        }
     }
     Show() {
         this.data();
@@ -243,12 +255,13 @@ class Plot {
                 this.Ys[key] = [] ;
                 this.select[key] = true;
             }
-            const numbers = ((row[2].match(/-?(\d+\.?\d*|\.?\d+)/g))??[]).map(Number) ;
+            const numbers = parseTelemetryNumbers(row[2]);
             numbers.forEach( n => this.Ys[key].push([time,n]));
         });
     }
     legend() {
         const legend = document.getElementById("legend");
+        legend.innerHTML="";
         Object.keys(this.select).forEach( (key,i) =>{
             const bu = document.createElement("button");
             bu.style.backgroundColor=this.colors[i%this.color_len];
@@ -304,6 +317,11 @@ class Plot {
             this.maxY=Math.max(this.maxY,r[1]);
             this.minY=Math.min(this.minY,r[1]);
         }));
+        if ( ! isFinite(this.maxY) || ! isFinite(this.minY)  ) {
+            // No data, choose arbitrary limits
+            this.maxY = 1;
+            this.minY = 0;
+        }
         this.padX = 10;
         this.padY = 10;
         this.Xlimits() ;
@@ -341,7 +359,7 @@ class Plot {
         }
         this.ctx.stroke() ;
         // scale
-        this.ctx.font = `${this.scaleY*this.Yminor}px san-serif` ;
+        this.ctx.font = `${this.scaleY*this.Yminor}px sans-serif` ;
         this.ctx.fillStyle = "gray" ;
         for ( let temp = this.Y0; temp <= this.Y1 ; temp += this.Yminor ) {
             // horz
@@ -364,7 +382,7 @@ class Plot {
         this.vert( 2, 2 ) ;
         this.vert( 4, 4 ) ;
                 
-        this.ctx.font = `${this.scaleX}px san-serif` ;
+        this.ctx.font = `${this.scaleX}px sans-serif` ;
         this.ctx.fillStyle = "gray" ;
         for ( let time = this.X0+4; time < this.X1 ; time += 4 ) {
             this.ctx.fillText(Number(time).toFixed(0),this.X(time),this.Y(this.Y0)+0.5);
@@ -376,14 +394,14 @@ class Plot {
             if ( this.select[k] ) {
                 this.ctx.strokeStyle=this.colors[i%this.color_len] ;
                 this.ctx.lineWidth=3;
-                this.ctx.beginPath() ;
                 this.Ys[k].forEach( xy => {
                     const x = this.X(xy[0]);
                     const y = this.Y(xy[1]);
-                    this.ctx.moveTo(x,y);
+                    this.ctx.beginPath() ;
+                    this.ctx.moveTo( x+4, y );
                     this.ctx.arc(x,y,4,0,2*Math.PI);
+                    this.ctx.stroke();
                 });
-                this.ctx.stroke();
             }
         });
     }
@@ -395,12 +413,6 @@ class Plot {
     }
 }
 class Week extends Plot {
-    type = 'plot';
-    jump() {
-        if ( 'orientation' in screen ) {
-            screen.orientation.addEventListener('change', () => JumpTo.type('week') );
-        }
-    }
     Xlimits() {
         this.X0 = 0;
         this.X1 = 7;
@@ -416,7 +428,7 @@ class Week extends Plot {
                 this.Ys[key] = [] ;
                 this.select[key] = true;
             }
-            const numbers = ((row[2].match(/-?(\d+\.?\d*|\.?\d+)/g))??[]).map(Number) ;
+            const numbers = parseTelemetryNumbers(row[2]) ;
             numbers.forEach( n => this.Ys[key].push([time,n]));
         });
     }
@@ -427,11 +439,8 @@ class Week extends Plot {
         this.vert( .5, 2 ) ;
         this.vert( 1, 4 ) ;
         
-        this.ctx.font = `${this.scaleX/5}px san-serif` ;
+        this.ctx.font = `${this.scaleX/5}px sans-serif` ;
         this.ctx.fillStyle = "gray" ;
-        //~ for ( let time = this.X0; time <= this.X1 ; time += 1 ) {
-            //~ this.ctx.fillText(Number(time).toFixed(0),this.X(time),this.Y(this.Y0)+0.5);
-        //~ }
         for ( let time = this.X0; time <= this.X1 ; time += 1 ) {
             let date = new Date(globals.daystart);
             date.setDate(date.getDate()-(this.X1-time));
@@ -440,12 +449,6 @@ class Week extends Plot {
     }
 }
 class Month extends Week {
-    type = 'plot';
-    jump() {
-        if ( 'orientation' in screen ) {
-            screen.orientation.addEventListener('change', () => JumpTo.type('month') );
-        }
-    }
     Xlimits() {
         this.X0 = 0;
         this.X1 = 31;
@@ -458,7 +461,7 @@ class Month extends Week {
         this.vert( 1, 2 ) ;
         this.vert( 7, 4 ) ;
                 
-        this.ctx.font = `${this.scaleX}px san-serif` ;
+        this.ctx.font = `${this.scaleX}px sans-serif` ;
         this.ctx.fillStyle = "gray" ;
         for ( let time = this.X0; time <= this.X1 ; time += 7 ) {
             let date = new Date(globals.daystart);
@@ -468,54 +471,49 @@ class Month extends Week {
     }
 }
 window.onload = () => {
-    function TestDate(x) {
+    const checkCalendarDate = (x) => {
         switch (x.cellType) {
-            case 'day':
-                return globals.goodDays.includes(JumpTo.YYYYMMDD(x.date));
-            case 'month':
-                return globals.goodMonths.includes(JumpTo.YYYYMMDD(x.date));
-            case 'year':
-                return globals.goodYears.includes(JumpTo.YYYYMMDD(x.date));
-            default:
-                return false;
+            case 'day': return globals.goodDays.includes(JumpTo.YYYYMMDD(x.date));
+            case 'month': return globals.goodMonths.includes(JumpTo.YYYYMMDD(x.date));
+            case 'year': return globals.goodYears.includes(JumpTo.YYYYMMDD(x.date));
+            default: return false;
         }
-    }
+    };  
     globalThis.dp = new AirDatepicker("#new_cal", {
-            onSelect(x) {JumpTo.date(x.date)},
+            onSelect(x) { if (x.date) JumpTo.date(x.date); },
             isMobile:true,
             buttons:[{content:'Today',onClick:(dp)=>JumpTo.date(new Date())}],
             selectedDates:[globals.daystart],
-            onRenderCell(x) { if (TestDate(x)) { return {classes:'present'};} },
+            onRenderCell(x) { if (checkCalendarDate(x)) return {classes:'present'}; },
     } ) ;
     new Swipe() ;
+    
+    // Central global UI configuration maps replacing duplicate class checks
+    const viewModes = {
+        "stat":  { isPlot: false, runner: () => new Stat().Show() },
+        "plot":  { isPlot: true,  runner: () => new Plot().Show() },
+        "week":  { isPlot: true,  runner: () => new Week().Show() },
+        "month": { isPlot: true,  runner: () => new Month().Show() },
+        "data":  { isPlot: false, runner: () => new Data().Show() }
+    };
+
     document.getElementById("date").innerHTML = globals.header_date;
     document.getElementById("time").innerHTML = globals.header_time;
     document.getElementById("showdate").innerHTML = globals.daystart.toLocaleDateString();
-    switch (globals.page_type) {
-        case "stat":
-            document.querySelectorAll(".non-plot").forEach( x=>x.style.display="block");
-            document.querySelectorAll(".yes-plot").forEach( x=>x.style.display="none");
-            new Stat().Show() ;
-            break ;
-        case "plot":
-            document.querySelectorAll(".non-plot").forEach( x=>x.style.display="none");
-            document.querySelectorAll(".yes-plot").forEach( x=>x.style.display="block");
-            new Plot().Show();
-            break ;
-        case "week":
-            document.querySelectorAll(".non-plot").forEach( x=>x.style.display="none");
-            document.querySelectorAll(".yes-plot").forEach( x=>x.style.display="block");
-            new Week().Show();
-            break ;
-        case "month":
-            document.querySelectorAll(".non-plot").forEach( x=>x.style.display="none");
-            document.querySelectorAll(".yes-plot").forEach( x=>x.style.display="block");
-            new Month().Show();
-            break ;
-        default: // "data"
-            document.querySelectorAll(".non-plot").forEach( x=>x.style.display="block");
-            document.querySelectorAll(".yes-plot").forEach( x=>x.style.display="none");
-            new Data().Show() ;
-            break ;
-    } 
+
+    const activeMode = viewModes[globals.page_type] || viewModes["data"];
+    
+    document.querySelectorAll(".non-plot").forEach(x => x.style.display = activeMode.isPlot ? "none" : "block");
+    document.querySelectorAll(".yes-plot").forEach(x => x.style.display = activeMode.isPlot ? "block" : "none");
+    
+    activeMode.runner(); // shows screen
+    
+    // Device orientation transition hook registered once down at root level safely
+    if ('orientation' in screen) {
+        screen.orientation.addEventListener('change', () => {
+            if (["plot", "week", "month"].includes(globals.page_type)) {
+                JumpTo.type(globals.page_type);
+            }
+        });
+    }    
 } ;
