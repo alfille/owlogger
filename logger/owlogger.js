@@ -9,7 +9,7 @@
 // Thanks to Gemini
 const parseTelemetryNumbers = (str) => {
     if (!str) return [];
-    const matches = str.match(/-?(\d+\.?\d*|\.?\d+)/g);
+    const matches = str.match(/-?(?:\d+\.?\d*|\.?\d+)/g);
     return matches ? matches.map(parseFloat) : [];
 };
 
@@ -55,7 +55,7 @@ class Cumulative {
         return this.A ;
     }
     get Std() {
-        return Math.sqrt( this.Q/this.n ) ;
+        return Math.sqrt( this.Q/Math.max(1,this.n) ) ;
     }
     get Name() {
         return this.name ;
@@ -286,6 +286,7 @@ class Plot {
         this.X0 = 0;
         this.X1 = 24;
         this.scaleX = (this.width-2*this.padX)/(this.X1-this.X0) ;
+        this.fontX = Math.min(this.scaleX,10)
     }
     Ylimits() {
         this.Y1 = Math.round( this.maxY + 1 );
@@ -382,7 +383,7 @@ class Plot {
         this.vert( 2, 2 ) ;
         this.vert( 4, 4 ) ;
                 
-        this.ctx.font = `${this.scaleX}px sans-serif` ;
+        this.ctx.font = `${this.fontX}px sans-serif` ;
         this.ctx.fillStyle = "gray" ;
         for ( let time = this.X0+4; time < this.X1 ; time += 4 ) {
             this.ctx.fillText(Number(time).toFixed(0),this.X(time),this.Y(this.Y0)+0.5);
@@ -439,7 +440,7 @@ class Week extends Plot {
         this.vert( .5, 2 ) ;
         this.vert( 1, 4 ) ;
         
-        this.ctx.font = `${this.scaleX/5}px sans-serif` ;
+        this.ctx.font = `${this.fontX/5}px sans-serif` ;
         this.ctx.fillStyle = "gray" ;
         for ( let time = this.X0; time <= this.X1 ; time += 1 ) {
             let date = new Date(globals.daystart);
@@ -461,7 +462,7 @@ class Month extends Week {
         this.vert( 1, 2 ) ;
         this.vert( 7, 4 ) ;
                 
-        this.ctx.font = `${this.scaleX}px sans-serif` ;
+        this.ctx.font = `${this.fontX}px sans-serif` ;
         this.ctx.fillStyle = "gray" ;
         for ( let time = this.X0; time <= this.X1 ; time += 7 ) {
             let date = new Date(globals.daystart);
@@ -510,10 +511,10 @@ window.onload = () => {
     
     // Device orientation transition hook registered once down at root level safely
     if ('orientation' in screen) {
-        screen.orientation.addEventListener('change', () => {
+        screen.orientation.onchange = () => {
             if (["plot", "week", "month"].includes(globals.page_type)) {
                 JumpTo.type(globals.page_type);
             }
-        });
+        };
     }    
 } ;
