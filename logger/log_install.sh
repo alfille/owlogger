@@ -55,12 +55,12 @@ mkdir -p               /usr/local/lib/owlogger
 \cp owlog_user.py      /usr/local/lib/owlogger
 \cp gunicorn.conf.py   /usr/local/lib/owlogger
 
-mkdir -p               /usr/local/lib/owlogger/static
-\cp owlogger.js        /usr/local/lib/owlogger/static
-\cp owlogger.css       /usr/local/lib/owlogger/static
-\cp air-datepicker.js  /usr/local/lib/owlogger/static
-\cp air-datepicker.css /usr/local/lib/owlogger/static
-\cp favicon.ico        /usr/local/lib/owlogger/static
+mkdir -p                      /usr/local/lib/owlogger/static
+\cp static/owlogger.js        /usr/local/lib/owlogger/static
+\cp static/owlogger.css       /usr/local/lib/owlogger/static
+\cp static/air-datepicker.js  /usr/local/lib/owlogger/static
+\cp static/air-datepicker.css /usr/local/lib/owlogger/static
+\cp static/favicon.ico        /usr/local/lib/owlogger/static
 
 # configuration
 mkdir -p              /etc/owlogger
