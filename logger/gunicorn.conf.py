@@ -48,7 +48,7 @@ def on_starting(server):
     Reads env vars injected by systemd and/or the TOML config file,
     then initialises globals that every worker will inherit.
     """
-    from owlogger_flask import init_app
+    from owlogger import init_app
     init_app()
 
 
