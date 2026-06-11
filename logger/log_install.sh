@@ -53,17 +53,23 @@ fi
 mkdir -p               /usr/local/lib/owlogger
 \cp owlogger.py        /usr/local/lib/owlogger
 \cp owlog_user.py      /usr/local/lib/owlogger
-\cp owlogger.js        /usr/local/lib/owlogger
-\cp owlogger.css       /usr/local/lib/owlogger
-\cp air-datepicker.js  /usr/local/lib/owlogger
-\cp air-datepicker.css /usr/local/lib/owlogger
-\cp favicon.ico        /usr/local/lib/owlogger
+\cp gunicorn.conf.py   /usr/local/lib/owlogger
+
+mkdir -p               /usr/local/lib/owlogger/static
+\cp owlogger.js        /usr/local/lib/owlogger/static
+\cp owlogger.css       /usr/local/lib/owlogger/static
+\cp air-datepicker.js  /usr/local/lib/owlogger/static
+\cp air-datepicker.css /usr/local/lib/owlogger/static
+\cp favicon.ico        /usr/local/lib/owlogger/static
 
 # configuration
 mkdir -p              /etc/owlogger
 cp -i owlogger.toml   /etc/owlogger
 chown -R $USER:$GROUP /etc/owlogger/owlogger.toml
 chmod 660             /etc/owlogger/owlogger.toml
+cp -i owlogger.env        /etc/owlogger
+chown -R $USER:$GROUP     /etc/owlogger/owlogger.env
+chmod 600                 /etc/owlogger/owlogger.env
 
 # database location
 #  create an empty database file to ensure permissions and ownership are correct

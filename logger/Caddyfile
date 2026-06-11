@@ -11,8 +11,20 @@
 #
 # The socket path here must match `bind` in gunicorn.conf.py.
 
-owloggerf.alfille.org {                  # ← replace with your real domain
+owlogger.alfille.org {                  # ← replace with your real domain
+    # Serve static assets directly from the directory
+    handle_path /static/* {
+        root * /usr/local/lib/owlogger/static
+        file_server
+    }
 
+    # Fallback to map the explicit root favicon block
+    rewrite /favicon.ico /static/favicon.ico
+
+    # Send everything else to your Gunicorn UNIX socket
+    handle {
+        reverse_proxy unix//run/owlogger/owlogger.sock
+    }
     # ── Reverse proxy ─────────────────────────────────────────────────────
     reverse_proxy unix//run/owlogger/owlogger.sock {
         # Forward real client information to Flask

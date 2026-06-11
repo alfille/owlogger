@@ -327,39 +327,6 @@ def best_practice_headers(response):
     response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
     return response
 
-
-# ---------------------------------------------------------------------------
-# Static file routes (JS / CSS)
-# ---------------------------------------------------------------------------
-
-ALLOWED_FILES = {
-    'air-datepicker.js':  'text/javascript',
-    'owlogger.js':        'text/javascript',
-    'air-datepicker.css': 'text/css',
-    'owlogger.css':       'text/css',
-}
-
-
-@app.route('/<path:filename>')
-def serve_static(filename):
-    if filename not in ALLOWED_FILES:
-        return best_practice_headers(
-            Response(f'<h1>404 Not Found</h1><p>{filename}</p>', status=404, content_type='text/html')
-        )
-    mime = ALLOWED_FILES[filename]
-    try:
-        with open(filename, 'rb') as f:
-            data = f.read()
-    except FileNotFoundError:
-        return best_practice_headers(Response(f'File not found: {filename}', status=404))
-    except PermissionError:
-        logging.error(f'Permission denied to serve {filename} content')
-        return best_practice_headers(Response(f'Access denied: {filename}', status=403))
-    resp = Response(data, status=200, content_type=mime)
-    resp.headers['Cache-Control'] = 'max-age=31536000'
-    return best_practice_headers(resp)
-
-
 # ---------------------------------------------------------------------------
 # Frame-buffer / PNG routes
 # ---------------------------------------------------------------------------
@@ -373,6 +340,8 @@ class BitMap:
         self.bottom_pad = 20
         self.white = white
         self.black = black
+
+        self.NUM_REGEXP = re.compile(r"-?\d+\.?\d*|-?\.\d+")
 
         self.make_canvas()
         self.make_letters()
@@ -442,18 +411,14 @@ class BitMap:
         return self.img
 
     def y_minmax( self, ys ):
-        # Math.round() rounds to the nearest integer.
-        for y_find in ys: # find any data
-            if len(y_find) > 0:
-                y_def = y_find[0]
-                min_y = y_def
-                max_y = y_def
-                for y in ys:
-                    min_y = min( min_y, min(y, default = y_def ))
-                    max_y = max( max_y, max(y, default = y_def ))
-                self.Y1 = round(max_y + 1)
-                self.Y0 = round(min_y - 1)
-                return
+        # Flatten the dynamic tracking sub-lists cleanly using standard Python syntax
+        flat_ys = [float(val) for sublist in ys for val in sublist if val is not None]
+        
+        if flat_ys:
+            self.Y1 = round(max(flat_ys) + 1)
+            self.Y0 = round(min(flat_ys) - 1)
+            return
+            
         # No data, arbitrary scale
         self.Y1 = 2
         self.Y0 = 0
@@ -540,8 +505,7 @@ class BitMap:
             self.draw.text((x, self.height-self.bottom_pad), t[1], font=self.axisfont, fill=self.black)
 
     def get_data( self ):
-        nums = re.compile(r"-?\d+\.?\d*|-?\.\d+")
-        return [ ( t[0], t[1], list(map(float,nums.findall(t[2]))) ) for t in db.plot_data() ]
+        return [ ( t[0], t[1], list(map(float,NUM_REGEXP.findall(t[2]))) ) for t in db.plot_data() ]
 
 class BrowserBitMap(BitMap):
     def __init__( self, width=800, height=480 ):
@@ -639,10 +603,12 @@ def _make_html(daystart, page_type):
         <title>OWLogger</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="description" content="Display 1-wire sensor readings logged to a cloud server.">
-        <link rel="stylesheet" href="./owlogger.css" type="text/css">
-        <script src="./owlogger.js"></script>
-        <link href="./air-datepicker.css" rel="stylesheet" type="text/css" defer>
-        <script src="./air-datepicker.js" defer></script>
+        
+        <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+        <link rel="stylesheet" href="/static/owlogger.css" type="text/css">
+        <script src="/static/owlogger.js"></script>
+        <link rel="stylesheet" href="/static/air-datepicker.css" type="text/css" defer>
+        <script src="/static/air-datepicker.js" defer></script>
     </head>
     <body>
         <div id='all'>
@@ -825,10 +791,19 @@ class Database:
     def hash_password(self, password):
         return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
+    def _get_connection(self):
+        """Standardized connection factory."""
+        conn = sqlite3.connect(self.database)
+        # Force WAL journal mode explicitly on initialization
+        conn.execute("PRAGMA journal_mode=WAL;")
+        # Optional, but highly recommended for multi-threaded web applications:
+        conn.execute("PRAGMA synchronous=NORMAL;") 
+        return conn
+
     def fetch(self, cmd, value_tuple=None):
         """SQL fetch command"""
         try:
-            with sqlite3.connect(self.database) as conn:
+            with self._get_connection() as conn:
                 cursor = conn.cursor()
                 if value_tuple is not None:
                     cursor.execute(cmd, value_tuple)
@@ -842,7 +817,7 @@ class Database:
     def command(self, cmd, value_tuple=None):
         """SQL non-fetch command (add data or configure)"""
         try:
-            with sqlite3.connect(self.database) as conn:
+            with self._get_connection() as conn:
                 cursor = conn.cursor()
                 if value_tuple is not None:
                     cursor.execute(cmd, value_tuple)

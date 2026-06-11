@@ -1,9 +1,9 @@
 # gunicorn.conf.py
 #
-# Gunicorn configuration for owlogger_flask.
+# Gunicorn configuration for owlogger.
 #
 # Direct use (no systemd):
-#   gunicorn -c gunicorn.conf.py owlogger_flask:app
+#   gunicorn -c gunicorn.conf.py owlogger:app
 #
 # Via systemd (recommended for production):
 #   owlogger.service runs this command.  Systemd injects env vars from
@@ -38,7 +38,7 @@ errorlog  = "-"
 loglevel  = "info"
 
 # ── Process name ──────────────────────────────────────────────────────────
-proc_name = "owloggerf"
+proc_name = "owlogger"
 
 # ── Hooks ─────────────────────────────────────────────────────────────────
 

@@ -21,11 +21,6 @@ cd logger
 sh ./log_install.sh
 cd ..
 
-# gunicorn
-cd logger/gunicorn
-sh ./gun_install.sh
-cd ../..
-
 # post
 cd post
 sh ./post_install.sh
