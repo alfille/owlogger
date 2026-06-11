@@ -498,7 +498,7 @@ class BitMap:
             self.draw.text((x, self.height-self.bottom_pad), t[1], font=self.axisfont, fill=self.black)
 
     def get_data( self ):
-        return [ ( t[0], t[1], list(map(float,NUM_REGEXP.findall(t[2]))) ) for t in db.plot_data() ]
+        return [ ( t[0], t[1], list(map(float,self.NUM_REGEXP.findall(t[2]))) ) for t in db.plot_data() ]
 
 class BrowserBitMap(BitMap):
     def __init__( self, width=800, height=480 ):
