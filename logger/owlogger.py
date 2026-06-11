@@ -320,13 +320,6 @@ def require_jwt(f):
         return f(*args, **kwargs)
     return decorated
 
-
-def best_practice_headers(response):
-    """Add security headers to a response."""
-    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
-    response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
-    return response
-
 # ---------------------------------------------------------------------------
 # Frame-buffer / PNG routes
 # ---------------------------------------------------------------------------
@@ -474,7 +467,7 @@ class BitMap:
         k = self.draw.text((0,0),self.sensors, font=self.keyfont, fill=self.black)
 
     def vert(self):
-        # vertival lines, Y axis markings
+        # vertical lines, Y axis markings
         now = db.now_time()
         marks = [
             ( 0., "N"),
@@ -532,7 +525,7 @@ def frame_buffer():
         headers={'Content-Length': str(len(raw_buffer))}
     )
     logging.debug(f"Sent {len(raw_buffer)} bytes")
-    return best_practice_headers(resp)
+    return resp
 
 
 @app.route('/test')
@@ -544,9 +537,8 @@ def frame_png():
     buf = BytesIO()
     img.save(buf, format='PNG')
     buf.seek(0)
-    resp = send_file(buf, mimetype='image/png')
     logging.debug("Sent PNG")
-    return best_practice_headers(resp)
+    return send_file(buf, mimetype='image/png')
 
 
 # ---------------------------------------------------------------------------
@@ -569,8 +561,7 @@ def index():
     logging.debug(f"GET / date={date_str} type={page_type}")
 
     html = _make_html(daystart, page_type)
-    resp = Response(html, status=200, content_type='text/html')
-    return best_practice_headers(resp)
+    return Response(html, status=200, content_type='text/html')
 
 
 def _make_html(daystart, page_type):
@@ -652,6 +643,13 @@ def _make_html(daystart, page_type):
     </script>
 </html>"""
 
+@app.after_request
+def apply_global_security_headers(response):
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
+    # Prevent browsers from incorrectly sniffing your custom raw e-paper mime-types
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    return response
 
 # ---------------------------------------------------------------------------
 # Data ingestion (POST / PUT)
@@ -667,10 +665,9 @@ def receive_data():
         data = body.get('data', '')
         if data:
             db.add(name, data)
-        resp = Response('', status=200, content_type='text/html')
+        return Response('', status=200, content_type='text/html')
     else:
-        resp = Response('Bad Request', status=400)
-    return best_practice_headers(resp)
+        return Response('Bad Request', status=400)
 
 
 # ---------------------------------------------------------------------------
