@@ -44,7 +44,7 @@
 import sqlite3
 import argparse
 import base64
-import datetime
+import datetime as dt
 from io import BytesIO
 import json
 import os
@@ -520,7 +520,6 @@ def frame_buffer():
     resp = Response(
         raw_buffer,
         status=200,
-#        content_type='application/octet-stream',
         content_type='image/x-raw',
         headers={'Content-Length': str(len(raw_buffer))}
     )
@@ -548,15 +547,15 @@ def frame_png():
 @app.route('/')
 @require_basic_auth
 def index():
-    date_str      = request.args.get('date', datetime.date.today().isoformat())
+    date_str      = request.args.get('date', dt.date.today().isoformat())
     page_type_raw = request.args.get('type', 'data')
     type_map      = {'week': 'week', 'plot': 'plot', 'stat': 'stat', 'month': 'month', }
     page_type     = type_map.get(page_type_raw, 'data')
 
     try:
-        daystart = datetime.datetime.fromisoformat(date_str)
+        daystart = dt.datetime.fromisoformat(date_str)
     except ValueError:
-        daystart = datetime.datetime.combine(datetime.date.today(), datetime.time())
+        daystart = dt.datetime.combine(dt.date.today(), dt.time())
 
     logging.debug(f"GET / date={date_str} type={page_type}")
 
@@ -566,15 +565,16 @@ def index():
 
 def _make_html(daystart, page_type):
     # Data fetching
-    if page_type == 'week':
-        raw_data = db.week_data(daystart)
-    elif page_type == 'month':
-        raw_data = db.month_data(daystart) 
-    else:
-        raw_data = db.day_data(daystart)
+    match page_type:
+        case 'week':
+            raw_data = db.week_data(daystart)
+        case 'month':
+            raw_data = db.month_data(daystart) 
+        case _:
+            raw_data = db.day_data(daystart)
 
     # Use json.dumps to handle quotes, escaping, and formatting
-    now = datetime.datetime.now()
+    now = dt.datetime.now()
     js_vars = {
         "dayData": raw_data,
         "goodDays": [d[0] for d in db.distinct_days(daystart)],
@@ -726,15 +726,15 @@ class Database:
             (source, value))
 
     def day_data(self, day):
-        nextday = day + datetime.timedelta(days=1)
+        nextday = day + dt.timedelta(days=1)
         return self.fetch(
             """SELECT TIME(date, 'localtime') as t, source, value FROM datalog
                WHERE DATE(date,'localtime') BETWEEN DATE(?) AND DATE(?) ORDER BY t""",
             (day.isoformat(), nextday.isoformat()))
 
     def back_data(self, day, back_days):
-        nextday  = day + datetime.timedelta(days=1)
-        firstday = day + datetime.timedelta(days=-back_days)
+        nextday  = day + dt.timedelta(days=1)
+        firstday = day + dt.timedelta(days=-back_days)
         return self.fetch(
             """SELECT strftime('%J',date,'localtime')-strftime("%J",?,'localtime') as t, source, value
                FROM datalog
@@ -760,8 +760,8 @@ class Database:
         return self.back_data( day, 30 )
 
     def distinct_days(self, day):
-        firstday = day + datetime.timedelta(days=-34)
-        lastday  = day + datetime.timedelta(days=34)
+        firstday = day + dt.timedelta(days=-34)
+        lastday  = day + dt.timedelta(days=34)
         return self.fetch(
             """SELECT DISTINCT DATE(date,'localtime') as d FROM datalog
                WHERE DATE(date,'localtime') BETWEEN DATE(?) AND DATE(?) ORDER BY d""",
