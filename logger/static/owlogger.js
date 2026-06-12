@@ -444,7 +444,7 @@ class Week extends Plot {
         this.ctx.fillStyle = "gray" ;
         for ( let time = this.X0; time <= this.X1 ; time += 1 ) {
             let date = new Date(globals.daystart);
-            date.setDate(date.getDate()-(this.X1-time));
+            date.setDate(date.getDate()-(this.X1-time)+1);
             this.ctx.fillText(date.toLocaleDateString('en-US', {month: 'short', day: 'numeric'}),this.X(time),this.Y(this.Y0)+0.5);
         }
     }
@@ -466,7 +466,7 @@ class Month extends Week {
         this.ctx.fillStyle = "gray" ;
         for ( let time = this.X0; time <= this.X1 ; time += 7 ) {
             let date = new Date(globals.daystart);
-            date.setDate(date.getDate()-(this.X1-time));
+            date.setDate(date.getDate()-(this.X1-time)+1);
             this.ctx.fillText(date.toLocaleDateString('en-US', {month: 'short', day: 'numeric'}),this.X(time),this.Y(this.Y0)+0.5);
         }
     }
